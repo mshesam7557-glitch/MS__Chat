@@ -1,0 +1,4124 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>MS Chat</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        html,
+        body {
+            width: 100%;
+            min-height: 100%;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            font-family:
+                Arial,
+                Tahoma,
+                sans-serif;
+
+            direction: rtl;
+
+            min-height: 100vh;
+
+            background-image:
+                linear-gradient(
+                    rgba(6, 14, 50, 0.22),
+                    rgba(18, 8, 60, 0.28)
+                ),
+                url("background.png");
+
+            background-size: cover;
+
+            background-position: center;
+
+            background-repeat: no-repeat;
+
+            background-attachment: fixed;
+
+            color: #111;
+        }
+
+
+        button,
+        input {
+            font-family: inherit;
+        }
+
+
+        button {
+            cursor: pointer;
+        }
+
+
+        /* =================================================
+           LOGIN
+        ================================================= */
+
+        #login {
+
+            width: calc(100% - 30px);
+
+            max-width: 430px;
+
+            margin: 70px auto;
+
+            padding: 30px;
+
+            border-radius: 22px;
+
+            background:
+                rgba(255, 255, 255, 0.90);
+
+            backdrop-filter:
+                blur(14px);
+
+            -webkit-backdrop-filter:
+                blur(14px);
+
+            box-shadow:
+                0 20px 50px
+                rgba(0, 0, 0, 0.25);
+
+            text-align: center;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.45);
+        }
+
+
+        #login h1 {
+
+            margin:
+                0 0 8px;
+
+            font-size: 34px;
+        }
+
+
+        #login h3 {
+
+            margin:
+                0 0 18px;
+
+            opacity: 0.75;
+        }
+
+
+        #login input {
+
+            width: 100%;
+
+            padding: 14px;
+
+            margin:
+                7px 0;
+
+            border:
+                1px solid
+                rgba(0, 0, 0, 0.13);
+
+            border-radius: 11px;
+
+            font-size: 15px;
+
+            outline: none;
+
+            background:
+                rgba(255, 255, 255, 0.95);
+        }
+
+
+        #login input:focus {
+
+            border-color:
+                #6575ff;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(101, 117, 255, 0.12);
+        }
+
+
+        #login > button {
+
+            width: 100%;
+
+            padding: 14px;
+
+            margin-top: 10px;
+
+            border: none;
+
+            border-radius: 11px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #3575ff,
+                    #6847e8
+                );
+
+            color: white;
+
+            font-size: 16px;
+
+            font-weight: bold;
+
+            transition:
+                transform 0.15s ease,
+                box-shadow 0.15s ease;
+        }
+
+
+        #login > button:hover {
+
+            transform:
+                translateY(-1px);
+
+            box-shadow:
+                0 8px 18px
+                rgba(60, 80, 220, 0.25);
+        }
+
+
+        #switchMode {
+
+            margin-top: 18px;
+
+            color:
+                #3f55db;
+
+            text-decoration:
+                underline;
+
+            cursor: pointer;
+        }
+
+
+        #loginMessage {
+
+            min-height: 22px;
+
+            margin-bottom: 0;
+
+            font-size: 14px;
+        }
+
+
+        /* =================================================
+           MAIN CHAT
+        ================================================= */
+
+        #chat {
+
+            display: none;
+
+            width: calc(100% - 30px);
+
+            max-width: 1200px;
+
+            height: calc(100vh - 60px);
+
+            min-height: 560px;
+
+            margin: 30px auto;
+
+            background:
+                linear-gradient(
+                    rgba(7, 18, 65, 0.14),
+                    rgba(20, 10, 70, 0.18)
+                ),
+                url("background.png");
+
+            background-size: cover;
+
+            background-position: center;
+
+            background-repeat: no-repeat;
+
+            backdrop-filter: blur(2px);
+
+            -webkit-backdrop-filter: blur(2px);
+
+            border-radius: 22px;
+
+            overflow: hidden;
+
+            box-shadow:
+                0 20px 60px
+                rgba(0, 0, 0, 0.28);
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.45);
+
+            flex-direction: row;
+        }
+
+
+        /* =================================================
+           SIDEBAR
+        ================================================= */
+
+        #sidebar {
+
+            width: 31%;
+
+            min-width: 240px;
+
+            padding: 18px;
+
+            overflow-y: auto;
+
+            background:
+                rgba(255, 255, 255, 0.74);
+
+            backdrop-filter:
+                blur(12px);
+
+            -webkit-backdrop-filter:
+                blur(12px);
+
+            border-left:
+                1px solid
+                rgba(255, 255, 255, 0.24);
+        }
+
+
+        #sidebar h2 {
+
+            margin:
+                0 0 10px;
+
+            font-size: 22px;
+        }
+
+
+        #myUsername {
+
+            display: inline-block;
+
+            margin-bottom: 8px;
+        }
+
+
+        #sidebar > button {
+
+            width: 100%;
+
+            padding: 10px;
+
+            margin:
+                5px 0;
+
+            border:
+                1px solid
+                rgba(0, 0, 0, 0.08);
+
+            border-radius: 10px;
+
+            background:
+                rgba(255, 255, 255, 0.8);
+
+            font-size: 14px;
+        }
+
+
+        #sidebar > button:hover {
+
+            background:
+                rgba(255, 255, 255, 1);
+        }
+
+
+        #sidebar hr {
+
+            border: none;
+
+            border-top:
+                1px solid
+                rgba(0, 0, 0, 0.10);
+
+            margin:
+                14px 0;
+        }
+
+
+        #users button {
+
+            width: 100%;
+
+            display: block;
+
+            padding: 11px;
+
+            margin:
+                7px 0;
+
+            border:
+                1px solid
+                rgba(0, 0, 0, 0.08);
+
+            border-radius: 12px;
+
+            background:
+                rgba(255, 255, 255, 0.80);
+
+            text-align: right;
+
+            transition:
+                0.15s ease;
+        }
+
+
+        #users button:hover {
+
+            transform:
+                translateY(-1px);
+
+            background:
+                rgba(255, 255, 255, 1);
+
+            box-shadow:
+                0 5px 15px
+                rgba(0, 0, 0, 0.08);
+        }
+
+
+        .user-name {
+
+            font-weight:
+                bold;
+
+            font-size:
+                14px;
+        }
+
+
+        .user-status {
+
+            margin-top:
+                4px;
+
+            font-size:
+                11px;
+
+            opacity:
+                0.65;
+        }
+
+
+        .new-message {
+
+            border:
+                2px solid
+                #5a6dff !important;
+        }
+
+
+        /* =================================================
+           CHAT AREA
+        ================================================= */
+
+        #chatArea {
+
+            width: 69%;
+
+            min-width: 0;
+
+            display: flex;
+
+            flex-direction: column;
+
+            background:
+                rgba(255, 255, 255, 0.10);
+        }
+
+
+        #chatHeader {
+
+            min-height: 72px;
+
+            padding:
+                12px 18px;
+
+            border-bottom:
+                1px solid
+                rgba(255, 255, 255, 0.24);
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            background:
+                rgba(255, 255, 255, 0.66);
+
+            backdrop-filter:
+                blur(12px);
+
+            -webkit-backdrop-filter:
+                blur(12px);
+        }
+
+
+        #chatTitle {
+
+            flex: 1;
+
+            min-width: 0;
+
+            font-size:
+                17px;
+
+            font-weight:
+                bold;
+
+            overflow: hidden;
+
+            text-overflow:
+                ellipsis;
+
+            white-space:
+                nowrap;
+        }
+
+
+        /* =================================================
+           CALL BUTTONS
+        ================================================= */
+
+        #callButton,
+        #hangupButton {
+
+            border: none;
+
+            border-radius: 10px;
+
+            padding:
+                10px 13px;
+
+            font-size:
+                13px;
+
+            transition:
+                0.15s ease;
+        }
+
+
+        #callButton {
+
+            background:
+                #dcf8e0;
+        }
+
+
+        #callButton:hover {
+
+            background:
+                #c9f1cf;
+        }
+
+
+        #hangupButton {
+
+            display: none;
+
+            background:
+                #ffdcdc;
+        }
+
+
+        #hangupButton:hover {
+
+            background:
+                #ffc4c4;
+        }
+
+
+        /* =================================================
+           MESSAGES
+        ================================================= */
+
+        #messages {
+
+            flex: 1;
+
+            min-height: 0;
+
+            padding:
+                20px;
+
+            overflow-y: auto;
+
+            background:
+                rgba(247, 249, 255, 0.10);
+        }
+
+
+        .message {
+
+            max-width:
+                min(72%, 650px);
+
+            width: fit-content;
+
+            padding:
+                10px 14px;
+
+            margin:
+                8px 0;
+
+            border-radius:
+                14px;
+
+            clear:
+                both;
+
+            line-height:
+                1.55;
+
+            word-wrap:
+                break-word;
+
+            overflow-wrap:
+                anywhere;
+
+            box-shadow:
+                0 2px 8px
+                rgba(0, 0, 0, 0.04);
+        }
+
+
+        .mine {
+
+            margin-left: auto;
+
+            background:
+                #d8ffd2;
+
+            border-bottom-right-radius:
+                5px;
+        }
+
+
+        .theirs {
+
+            margin-right: auto;
+
+            background:
+                rgba(255, 255, 255, 0.94);
+
+            border:
+                1px solid
+                rgba(0, 0, 0, 0.06);
+
+            border-bottom-left-radius:
+                5px;
+        }
+
+
+        .message-time {
+
+            margin-top:
+                5px;
+
+            font-size:
+                10px;
+
+            opacity:
+                0.55;
+        }
+
+
+        .message-status {
+
+            margin-right:
+                5px;
+
+            font-size:
+                11px;
+        }
+
+
+        .audioMessage {
+
+            display:
+                block;
+
+            width:
+                min(280px, 100%);
+
+            max-width:
+                100%;
+
+            margin-top:
+                6px;
+        }
+
+
+        /* =================================================
+           SEND AREA
+        ================================================= */
+
+        #sendArea {
+
+            display: flex;
+
+            align-items: center;
+
+            padding:
+                12px;
+
+            gap:
+                8px;
+
+            border-top:
+                1px solid
+                rgba(255, 255, 255, 0.24);
+
+            background:
+                rgba(255, 255, 255, 0.66);
+
+            backdrop-filter:
+                blur(12px);
+
+            -webkit-backdrop-filter:
+                blur(12px);
+        }
+
+
+        #message {
+
+            flex: 1;
+
+            min-width:
+                0;
+
+            padding:
+                13px;
+
+            border:
+                1px solid
+                rgba(0, 0, 0, 0.10);
+
+            border-radius:
+                11px;
+
+            outline:
+                none;
+
+            font-size:
+                15px;
+
+            background:
+                rgba(255, 255, 255, 0.92);
+        }
+
+
+        #message:focus {
+
+            border-color:
+                #6575ff;
+
+            box-shadow:
+                0 0 0 3px
+                rgba(101, 117, 255, 0.10);
+        }
+
+
+        #sendButton,
+        #recordButton {
+
+            flex-shrink:
+                0;
+
+            padding:
+                12px 15px;
+
+            border:
+                none;
+
+            border-radius:
+                10px;
+
+            font-size:
+                14px;
+        }
+
+
+        #sendButton {
+
+            color:
+                white;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #3575ff,
+                    #6847e8
+                );
+        }
+
+
+        #sendButton:hover {
+
+            filter:
+                brightness(1.05);
+        }
+
+
+        #recordButton {
+
+            background:
+                #ececff;
+        }
+
+
+        #recordButton.recording {
+
+            background:
+                #ef4444;
+
+            color:
+                white;
+
+            animation:
+                recordingPulse
+                1s infinite;
+        }
+
+
+        @keyframes recordingPulse {
+
+            50% {
+                transform:
+                    scale(1.05);
+            }
+
+        }
+
+
+        /* =================================================
+           POPUPS
+        ================================================= */
+
+        .popup {
+
+            display:
+                none;
+
+            position:
+                fixed;
+
+            top:
+                50%;
+
+            left:
+                50%;
+
+            transform:
+                translate(-50%, -50%);
+
+            width:
+                calc(100% - 30px);
+
+            max-width:
+                430px;
+
+            padding:
+                25px;
+
+            border-radius:
+                18px;
+
+            background:
+                rgba(255, 255, 255, 0.94);
+
+            backdrop-filter:
+                blur(14px);
+
+            -webkit-backdrop-filter:
+                blur(14px);
+
+            box-shadow:
+                0 20px 60px
+                rgba(0, 0, 0, 0.30);
+
+            z-index:
+                1000;
+        }
+
+
+        .popup h3 {
+
+            margin-top:
+                0;
+        }
+
+
+        .popup input {
+
+            width:
+                100%;
+
+            padding:
+                12px;
+
+            margin:
+                7px 0;
+
+            border:
+                1px solid
+                #ddd;
+
+            border-radius:
+                10px;
+
+            outline:
+                none;
+        }
+
+
+        .popup input:focus {
+
+            border-color:
+                #6575ff;
+        }
+
+
+        .popup button {
+
+            padding:
+                10px 14px;
+
+            margin:
+                5px;
+
+            border:
+                none;
+
+            border-radius:
+                9px;
+
+            background:
+                #ececff;
+        }
+
+
+        .popup button:hover {
+
+            filter:
+                brightness(0.97);
+        }
+
+
+        /* =================================================
+           CALL POPUP
+        ================================================= */
+
+        #callPopup {
+
+            display:
+                none;
+
+            position:
+                fixed;
+
+            top:
+                30px;
+
+            left:
+                50%;
+
+            transform:
+                translateX(-50%);
+
+            width:
+                calc(100% - 30px);
+
+            max-width:
+                400px;
+
+            padding:
+                25px;
+
+            text-align:
+                center;
+
+            border-radius:
+                18px;
+
+            background:
+                rgba(255, 255, 255, 0.95);
+
+            backdrop-filter:
+                blur(14px);
+
+            -webkit-backdrop-filter:
+                blur(14px);
+
+            box-shadow:
+                0 20px 60px
+                rgba(0, 0, 0, 0.28);
+
+            z-index:
+                1100;
+        }
+
+
+        #callPopup button {
+
+            padding:
+                11px 20px;
+
+            margin:
+                8px;
+
+            border:
+                none;
+
+            border-radius:
+                10px;
+        }
+
+
+        #callPopup button:first-of-type {
+
+            background:
+                #d8ffd2;
+        }
+
+
+        #callPopup button:last-of-type {
+
+            background:
+                #ffdcdc;
+        }
+
+
+        #remoteAudio {
+
+            display:
+                none;
+        }
+
+
+        /* =================================================
+           MOBILE
+        ================================================= */
+
+        @media (max-width: 760px) {
+
+            #chat {
+
+                width:
+                    calc(100% - 12px);
+
+                height:
+                    calc(100vh - 24px);
+
+                min-height:
+                    0;
+
+                margin:
+                    12px auto;
+
+                border-radius:
+                    16px;
+            }
+
+
+            #sidebar {
+
+                width:
+                    34%;
+
+                min-width:
+                    125px;
+
+                padding:
+                    10px;
+            }
+
+
+            #chatArea {
+
+                width:
+                    66%;
+            }
+
+
+            #sidebar h2 {
+
+                font-size:
+                    16px;
+            }
+
+
+            #sidebar > button {
+
+                font-size:
+                    11px;
+
+                padding:
+                    8px;
+            }
+
+
+            #user-name {
+
+                font-size:
+                    12px;
+            }
+
+
+            .user-status {
+
+                font-size:
+                    9px;
+            }
+
+
+            #chatHeader {
+
+                min-height:
+                    62px;
+
+                padding:
+                    8px 10px;
+            }
+
+
+            #chatTitle {
+
+                font-size:
+                    13px;
+            }
+
+
+            #callButton,
+            #hangupButton {
+
+                padding:
+                    7px 8px;
+
+                font-size:
+                    10px;
+            }
+
+
+            #messages {
+
+                padding:
+                    12px;
+            }
+
+
+            .message {
+
+                max-width:
+                    85%;
+
+                font-size:
+                    13px;
+            }
+
+
+            #sendArea {
+
+                padding:
+                    8px;
+
+                gap:
+                    5px;
+            }
+
+
+            #message {
+
+                font-size:
+                    13px;
+
+                padding:
+                    10px;
+            }
+
+
+            #sendButton,
+            #recordButton {
+
+                padding:
+                    10px;
+
+                font-size:
+                    12px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
+<div id="login">
+
+    <h1>💬 MS Chat</h1>
+
+    <h3 id="authTitle">
+        ورود به حساب
+    </h3>
+
+
+    <input
+        id="username"
+        type="text"
+        placeholder="نام کاربری"
+        autocomplete="username"
+    >
+
+
+    <input
+        id="password"
+        type="password"
+        placeholder="رمز عبور"
+        autocomplete="current-password"
+    >
+
+
+    <button onclick="authAction()">
+        ورود
+    </button>
+
+
+    <p
+        id="switchMode"
+        onclick="switchAuthMode()"
+    >
+        حساب ندارم؛ ثبت‌نام کنم
+    </p>
+
+
+    <p id="loginMessage"></p>
+
+</div>
+
+
+
+<!-- =====================================================
+     MAIN CHAT
+===================================================== -->
+
+<div id="chat">
+
+
+    <!-- =================================================
+         SIDEBAR
+    ================================================= -->
+
+    <div id="sidebar">
+
+        <h2>
+            👥 کاربران
+        </h2>
+
+
+        <p>
+            <strong id="myUsername"></strong>
+        </p>
+
+
+        <button onclick="openProfile()">
+            👤 پروفایل
+        </button>
+
+
+        <button onclick="openChangePassword()">
+            🔐 تغییر رمز
+        </button>
+
+
+        <button onclick="logout()">
+            🚪 خروج
+        </button>
+
+
+        <hr>
+
+
+        <div id="users"></div>
+
+    </div>
+
+
+    <!-- =================================================
+         CHAT AREA
+    ================================================= -->
+
+    <div id="chatArea">
+
+
+        <div id="chatHeader">
+
+            <span id="chatTitle">
+                یک نفر را انتخاب کن 👈
+            </span>
+
+
+            <button
+                id="callButton"
+                onclick="startCall()"
+                disabled
+            >
+                📞 تماس
+            </button>
+
+
+            <button
+                id="hangupButton"
+                onclick="hangUp()"
+            >
+                ❌ قطع
+            </button>
+
+        </div>
+
+
+        <div id="messages"></div>
+
+
+        <div id="sendArea">
+
+            <input
+                id="message"
+                type="text"
+                placeholder="پیامت رو بنویس..."
+                disabled
+                onkeydown="handleEnter(event)"
+            >
+
+
+            <button
+                id="recordButton"
+                onclick="toggleRecording()"
+                disabled
+            >
+                🎤
+            </button>
+
+
+            <button
+                id="sendButton"
+                onclick="sendMessage()"
+                disabled
+            >
+                ارسال
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =====================================================
+     PROFILE
+===================================================== -->
+
+<div
+    id="profilePopup"
+    class="popup"
+>
+
+    <h3>
+        👤 پروفایل
+    </h3>
+
+
+    <p>
+        نام کاربری:
+        <strong id="profileUsername"></strong>
+    </p>
+
+
+    <input
+        id="displayName"
+        type="text"
+        placeholder="نام نمایشی"
+    >
+
+
+    <button onclick="saveProfile()">
+        💾 ذخیره
+    </button>
+
+
+    <button onclick="closeProfile()">
+        بستن
+    </button>
+
+
+    <p id="profileMessage"></p>
+
+</div>
+
+
+
+<!-- =====================================================
+     CHANGE PASSWORD
+===================================================== -->
+
+<div
+    id="changePasswordPopup"
+    class="popup"
+>
+
+    <h3>
+        🔐 تغییر رمز عبور
+    </h3>
+
+
+    <input
+        id="currentPassword"
+        type="password"
+        placeholder="رمز فعلی"
+    >
+
+
+    <input
+        id="newPassword"
+        type="password"
+        placeholder="رمز جدید"
+    >
+
+
+    <input
+        id="confirmPassword"
+        type="password"
+        placeholder="تکرار رمز جدید"
+    >
+
+
+    <button onclick="changePassword()">
+        تغییر رمز
+    </button>
+
+
+    <button onclick="closeChangePassword()">
+        بستن
+    </button>
+
+
+    <p id="passwordMessage"></p>
+
+</div>
+
+
+
+<!-- =====================================================
+     INCOMING CALL
+===================================================== -->
+
+<div id="callPopup">
+
+    <h3 id="callMessage">
+        📞 تماس ورودی
+    </h3>
+
+
+    <button onclick="acceptCall()">
+        ✅ قبول
+    </button>
+
+
+    <button onclick="rejectCall()">
+        ❌ رد
+    </button>
+
+</div>
+
+
+<audio
+    id="remoteAudio"
+    autoplay
+    playsinline
+></audio>
+
+
+
+<script>
+
+
+/* =====================================================
+   STATE
+===================================================== */
+
+let isRegisterMode = false;
+
+let currentUsername = "";
+
+let currentDisplayName = "";
+
+let authToken = "";
+
+let socket = null;
+
+let selectedUser = "";
+
+
+/* =====================================================
+   AUDIO MESSAGE
+===================================================== */
+
+let mediaRecorder = null;
+
+let audioChunks = [];
+
+let isRecording = false;
+
+
+/* =====================================================
+   WEBRTC
+===================================================== */
+
+let peerConnection = null;
+
+let localStream = null;
+
+let incomingCaller = "";
+
+let incomingOffer = null;
+
+let pendingCandidates = [];
+
+
+const rtcConfig = {
+
+    iceServers: [
+
+        {
+            urls:
+                "stun:stun.l.google.com:19302"
+        }
+
+    ]
+
+};
+
+
+/* =====================================================
+   AUTH MODE
+===================================================== */
+
+function switchAuthMode() {
+
+    isRegisterMode =
+        !isRegisterMode;
+
+
+    const title =
+        document.getElementById(
+            "authTitle"
+        );
+
+
+    const button =
+        document.querySelector(
+            "#login > button"
+        );
+
+
+    const switchText =
+        document.getElementById(
+            "switchMode"
+        );
+
+
+    const password =
+        document.getElementById(
+            "password"
+        );
+
+
+    const message =
+        document.getElementById(
+            "loginMessage"
+        );
+
+
+    message.textContent = "";
+
+
+    if (isRegisterMode) {
+
+        title.textContent =
+            "ساخت حساب جدید";
+
+
+        button.textContent =
+            "ثبت‌نام";
+
+
+        switchText.textContent =
+            "حساب دارم؛ وارد شوم";
+
+
+        password.autocomplete =
+            "new-password";
+
+    } else {
+
+        title.textContent =
+            "ورود به حساب";
+
+
+        button.textContent =
+            "ورود";
+
+
+        switchText.textContent =
+            "حساب ندارم؛ ثبت‌نام کنم";
+
+
+        password.autocomplete =
+            "current-password";
+    }
+}
+
+
+/* =====================================================
+   LOGIN / REGISTER
+===================================================== */
+
+async function authAction() {
+
+    const username =
+        document.getElementById(
+            "username"
+        ).value.trim();
+
+
+    const password =
+        document.getElementById(
+            "password"
+        ).value;
+
+
+    const messageElement =
+        document.getElementById(
+            "loginMessage"
+        );
+
+
+    if (!username) {
+
+        messageElement.textContent =
+            "نام کاربری را وارد کن.";
+
+        return;
+    }
+
+
+    if (!password) {
+
+        messageElement.textContent =
+            "رمز عبور را وارد کن.";
+
+        return;
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "username",
+        username
+    );
+
+
+    formData.append(
+        "password",
+        password
+    );
+
+
+    const endpoint =
+        isRegisterMode
+            ? "/register"
+            : "/login";
+
+
+    try {
+
+        const response =
+            await fetch(
+                endpoint,
+                {
+                    method:
+                        "POST",
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (!data.success) {
+
+            messageElement.textContent =
+                data.message;
+
+            return;
+        }
+
+
+        if (isRegisterMode) {
+
+            messageElement.textContent =
+                "✅ حساب ساخته شد. حالا وارد شو.";
+
+
+            isRegisterMode =
+                false;
+
+
+            switchAuthMode();
+
+
+            document.getElementById(
+                "username"
+            ).value =
+                username;
+
+
+            document.getElementById(
+                "password"
+            ).value =
+                "";
+
+
+            return;
+        }
+
+
+        currentUsername =
+            data.username;
+
+
+        currentDisplayName =
+            data.display_name;
+
+
+        authToken =
+            data.token;
+
+
+        openChat();
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        messageElement.textContent =
+            "ارتباط با سرور برقرار نشد.";
+    }
+}
+
+
+/* =====================================================
+   OPEN CHAT
+===================================================== */
+
+function openChat() {
+
+    document.getElementById(
+        "login"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "chat"
+    ).style.display =
+        "flex";
+
+
+    document.getElementById(
+        "myUsername"
+    ).textContent =
+        currentDisplayName;
+
+
+    connectWebSocket();
+}
+
+
+/* =====================================================
+   WEBSOCKET
+===================================================== */
+
+function connectWebSocket() {
+
+    const protocol =
+        location.protocol === "https:"
+            ? "wss:"
+            : "ws:";
+
+
+    socket =
+        new WebSocket(
+
+            `${protocol}//${location.host}/chat/`
+            +
+            encodeURIComponent(
+                currentUsername
+            )
+            +
+            "/"
+            +
+            encodeURIComponent(
+                authToken
+            )
+        );
+
+
+    socket.onopen =
+        function() {
+
+            console.log(
+                "WebSocket connected"
+            );
+        };
+
+
+    socket.onmessage =
+        async function(event) {
+
+            const data =
+                JSON.parse(
+                    event.data
+                );
+
+
+            /* USERS */
+
+            if (
+                data.type ===
+                "users"
+            ) {
+
+                showUsers(
+                    data.users
+                );
+
+                return;
+            }
+
+
+            /* HISTORY */
+
+            if (
+                data.type ===
+                "history"
+            ) {
+
+                showHistory(
+                    data.messages
+                );
+
+                return;
+            }
+
+
+            /* MESSAGE */
+
+            if (
+                data.type ===
+                "message"
+            ) {
+
+                if (
+                    selectedUser ===
+                    data.from
+                ) {
+
+                    addMessage(
+                        data.from,
+                        data.message,
+                        false,
+                        data.status,
+                        data.id
+                    );
+
+
+                    markMessagesRead(
+                        data.from
+                    );
+
+                } else {
+
+                    markNewMessage(
+                        data.from
+                    );
+                }
+
+
+                return;
+            }
+
+
+            /* SENT */
+
+            if (
+                data.type ===
+                "sent"
+            ) {
+
+                if (
+                    selectedUser ===
+                    data.to
+                ) {
+
+                    addMessage(
+                        currentUsername,
+                        data.message,
+                        true,
+                        data.status,
+                        data.id
+                    );
+                }
+
+
+                return;
+            }
+
+
+            /* AUDIO */
+
+            if (
+                data.type ===
+                "audio"
+            ) {
+
+                if (
+                    selectedUser ===
+                    data.from
+                ) {
+
+                    addAudioMessage(
+                        data.from,
+                        data.audio,
+                        false
+                    );
+
+
+                    markMessagesRead(
+                        data.from
+                    );
+
+                } else {
+
+                    markNewMessage(
+                        data.from
+                    );
+                }
+
+
+                return;
+            }
+
+
+            /* READ */
+
+            if (
+                data.type ===
+                "messages-read"
+            ) {
+
+                updateVisibleTicks();
+
+                return;
+            }
+
+
+            /* CALL OFFER */
+
+            if (
+                data.type ===
+                "call-offer"
+            ) {
+
+                incomingCaller =
+                    data.from;
+
+
+                incomingOffer =
+                    data.offer;
+
+
+                document.getElementById(
+                    "callMessage"
+                ).textContent =
+                    "📞 " +
+                    data.from +
+                    " در حال تماس با شماست";
+
+
+                document.getElementById(
+                    "callPopup"
+                ).style.display =
+                    "block";
+
+
+                return;
+            }
+
+
+            /* CALL ANSWER */
+
+            if (
+                data.type ===
+                "call-answer"
+            ) {
+
+                if (
+                    !peerConnection
+                ) {
+
+                    return;
+                }
+
+
+                await peerConnection
+                    .setRemoteDescription(
+                        data.answer
+                    );
+
+
+                await processPendingCandidates();
+
+
+                return;
+            }
+
+
+            /* ICE */
+
+            if (
+                data.type ===
+                "ice-candidate"
+            ) {
+
+                if (
+                    peerConnection &&
+                    peerConnection.remoteDescription
+                ) {
+
+                    try {
+
+                        await peerConnection
+                            .addIceCandidate(
+                                data.candidate
+                            );
+
+                    } catch (error) {
+
+                        console.error(
+                            "ICE error:",
+                            error
+                        );
+                    }
+
+                } else {
+
+                    pendingCandidates.push(
+                        data.candidate
+                    );
+                }
+
+
+                return;
+            }
+
+
+            /* CALL REJECTED */
+
+            if (
+                data.type ===
+                "call-rejected"
+            ) {
+
+                alert(
+                    data.from +
+                    " تماس را رد کرد."
+                );
+
+
+                endCall();
+
+                return;
+            }
+
+
+            /* CALL ENDED */
+
+            if (
+                data.type ===
+                "call-ended"
+            ) {
+
+                alert(
+                    "تماس توسط " +
+                    data.from +
+                    " قطع شد."
+                );
+
+
+                endCall();
+
+                return;
+            }
+
+
+            /* CALL ERROR */
+
+            if (
+                data.type ===
+                "call-error"
+            ) {
+
+                alert(
+                    data.message
+                );
+
+
+                endCall();
+
+                return;
+            }
+
+
+            /* GENERAL ERROR */
+
+            if (
+                data.type ===
+                "error"
+            ) {
+
+                alert(
+                    data.message
+                );
+
+                return;
+            }
+
+        };
+
+
+    socket.onerror =
+        function(error) {
+
+            console.error(
+                "WebSocket error:",
+                error
+            );
+        };
+
+
+    socket.onclose =
+        function() {
+
+            console.log(
+                "WebSocket closed"
+            );
+        };
+}
+
+
+/* =====================================================
+   SHOW USERS
+===================================================== */
+
+function showUsers(users) {
+
+    const usersDiv =
+        document.getElementById(
+            "users"
+        );
+
+
+    usersDiv.innerHTML =
+        "";
+
+
+    users.forEach(
+        function(user) {
+
+            if (
+                user.username ===
+                currentUsername
+            ) {
+
+                return;
+            }
+
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            const name =
+                document.createElement(
+                    "div"
+                );
+
+
+            name.className =
+                "user-name";
+
+
+            name.textContent =
+                "👤 " +
+                user.display_name;
+
+
+            const status =
+                document.createElement(
+                    "div"
+                );
+
+
+            status.className =
+                "user-status";
+
+
+            if (user.online) {
+
+                status.textContent =
+                    "🟢 آنلاین";
+
+            } else if (
+                user.last_seen
+            ) {
+
+                status.textContent =
+                    "آخرین بازدید: " +
+                    formatDate(
+                        user.last_seen
+                    );
+
+            } else {
+
+                status.textContent =
+                    "آفلاین";
+            }
+
+
+            button.appendChild(
+                name
+            );
+
+
+            button.appendChild(
+                status
+            );
+
+
+            button.dataset.user =
+                user.username;
+
+
+            button.onclick =
+                function() {
+
+                    button.classList.remove(
+                        "new-message"
+                    );
+
+
+                    selectUser(
+                        user.username,
+                        user.display_name
+                    );
+                };
+
+
+            usersDiv.appendChild(
+                button
+            );
+        }
+    );
+}
+
+
+/* =====================================================
+   SELECT USER
+===================================================== */
+
+function selectUser(
+    username,
+    displayName
+) {
+
+    selectedUser =
+        username;
+
+
+    document.getElementById(
+        "chatTitle"
+    ).textContent =
+        "💬 چت با " +
+        displayName;
+
+
+    document.getElementById(
+        "message"
+    ).disabled =
+        false;
+
+
+    document.getElementById(
+        "sendButton"
+    ).disabled =
+        false;
+
+
+    document.getElementById(
+        "recordButton"
+    ).disabled =
+        false;
+
+
+    document.getElementById(
+        "callButton"
+    ).disabled =
+        false;
+
+
+    document.getElementById(
+        "messages"
+    ).innerHTML =
+        "";
+
+
+    if (
+        socket &&
+        socket.readyState ===
+            WebSocket.OPEN
+    ) {
+
+        socket.send(
+            JSON.stringify({
+
+                action:
+                    "history",
+
+                user:
+                    username
+            })
+        );
+    }
+}
+
+
+/* =====================================================
+   HISTORY
+===================================================== */
+
+function showHistory(messages) {
+
+    const messagesDiv =
+        document.getElementById(
+            "messages"
+        );
+
+
+    messagesDiv.innerHTML =
+        "";
+
+
+    messages.forEach(
+        function(item) {
+
+            const mine =
+                item.sender ===
+                currentUsername;
+
+
+            if (
+                item.message
+            ) {
+
+                addMessage(
+                    item.sender,
+                    item.message,
+                    mine,
+                    item.status,
+                    item.id,
+                    item.created_at
+                );
+            }
+
+
+            if (
+                item.audio
+            ) {
+
+                addAudioMessage(
+                    item.sender,
+                    item.audio,
+                    mine
+                );
+            }
+        }
+    );
+}
+
+
+/* =====================================================
+   SEND MESSAGE
+===================================================== */
+
+function sendMessage() {
+
+    const input =
+        document.getElementById(
+            "message"
+        );
+
+
+    const message =
+        input.value.trim();
+
+
+    if (
+        !selectedUser ||
+        !message
+    ) {
+
+        return;
+    }
+
+
+    if (
+        !socket ||
+        socket.readyState !==
+            WebSocket.OPEN
+    ) {
+
+        alert(
+            "اتصال به سرور برقرار نیست."
+        );
+
+        return;
+    }
+
+
+    socket.send(
+        JSON.stringify({
+
+            action:
+                "message",
+
+            to:
+                selectedUser,
+
+            message:
+                message
+        })
+    );
+
+
+    input.value =
+        "";
+
+
+    input.focus();
+}
+
+
+/* =====================================================
+   ENTER
+===================================================== */
+
+function handleEnter(event) {
+
+    if (
+        event.key ===
+        "Enter"
+    ) {
+
+        event.preventDefault();
+
+        sendMessage();
+    }
+}
+
+
+/* =====================================================
+   ADD MESSAGE
+===================================================== */
+
+function addMessage(
+    sender,
+    message,
+    mine,
+    status = "sent",
+    messageId = "",
+    createdAt = ""
+) {
+
+    const messagesDiv =
+        document.getElementById(
+            "messages"
+        );
+
+
+    const element =
+        document.createElement(
+            "div"
+        );
+
+
+    element.classList.add(
+        "message"
+    );
+
+
+    element.classList.add(
+        mine
+            ? "mine"
+            : "theirs"
+    );
+
+
+    if (messageId) {
+
+        element.dataset.messageId =
+            messageId;
+    }
+
+
+    const text =
+        document.createElement(
+            "div"
+        );
+
+
+    text.textContent =
+        (
+            mine
+                ? "من: "
+                : sender + ": "
+        )
+        +
+        message;
+
+
+    const footer =
+        document.createElement(
+            "div"
+        );
+
+
+    footer.className =
+        "message-time";
+
+
+    if (createdAt) {
+
+        footer.appendChild(
+            document.createTextNode(
+                formatDate(
+                    createdAt
+                )
+            )
+        );
+    }
+
+
+    if (mine) {
+
+        const tick =
+            document.createElement(
+                "span"
+            );
+
+
+        tick.className =
+            "message-status";
+
+
+        tick.textContent =
+            getTick(
+                status
+            );
+
+
+        footer.appendChild(
+            tick
+        );
+    }
+
+
+    element.appendChild(
+        text
+    );
+
+
+    element.appendChild(
+        footer
+    );
+
+
+    messagesDiv.appendChild(
+        element
+    );
+
+
+    messagesDiv.scrollTop =
+        messagesDiv.scrollHeight;
+}
+
+
+/* =====================================================
+   TICKS
+===================================================== */
+
+function getTick(status) {
+
+    if (
+        status ===
+        "read"
+    ) {
+
+        return " ✓✓";
+    }
+
+
+    if (
+        status ===
+        "delivered"
+    ) {
+
+        return " ✓✓";
+    }
+
+
+    return " ✓";
+}
+
+
+function updateVisibleTicks() {
+
+    const ticks =
+        document.querySelectorAll(
+            ".mine .message-status"
+        );
+
+
+    ticks.forEach(
+        function(tick) {
+
+            tick.textContent =
+                " ✓✓";
+        }
+    );
+}
+
+
+/* =====================================================
+   MARK READ
+===================================================== */
+
+function markMessagesRead(
+    sender
+) {
+
+    if (
+        !socket ||
+        socket.readyState !==
+            WebSocket.OPEN
+    ) {
+
+        return;
+    }
+
+
+    socket.send(
+        JSON.stringify({
+
+            action:
+                "mark-read",
+
+            sender:
+                sender
+        })
+    );
+}
+
+
+/* =====================================================
+   AUDIO MESSAGE
+===================================================== */
+
+function addAudioMessage(
+    sender,
+    audio,
+    mine
+) {
+
+    if (!audio) {
+
+        return;
+    }
+
+
+    const messagesDiv =
+        document.getElementById(
+            "messages"
+        );
+
+
+    const container =
+        document.createElement(
+            "div"
+        );
+
+
+    container.classList.add(
+        "message"
+    );
+
+
+    container.classList.add(
+        mine
+            ? "mine"
+            : "theirs"
+    );
+
+
+    const label =
+        document.createElement(
+            "div"
+        );
+
+
+    label.textContent =
+        mine
+            ? "من: 🎤"
+            : sender + ": 🎤";
+
+
+    const audioElement =
+        document.createElement(
+            "audio"
+        );
+
+
+    audioElement.controls =
+        true;
+
+
+    audioElement.preload =
+        "metadata";
+
+
+    audioElement.src =
+        audio;
+
+
+    audioElement.className =
+        "audioMessage";
+
+
+    container.appendChild(
+        label
+    );
+
+
+    container.appendChild(
+        audioElement
+    );
+
+
+    messagesDiv.appendChild(
+        container
+    );
+
+
+    messagesDiv.scrollTop =
+        messagesDiv.scrollHeight;
+}
+
+
+/* =====================================================
+   RECORDING
+===================================================== */
+
+async function toggleRecording() {
+
+    if (
+        isRecording
+    ) {
+
+        stopRecording();
+
+        return;
+    }
+
+
+    if (
+        !selectedUser
+    ) {
+
+        alert(
+            "اول یک کاربر را انتخاب کن."
+        );
+
+        return;
+    }
+
+
+    if (
+        !navigator.mediaDevices ||
+        !navigator.mediaDevices.getUserMedia
+    ) {
+
+        alert(
+            "مرورگر اجازه دسترسی به میکروفون را نمی‌دهد."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        const stream =
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+                    audio:
+                        true
+                });
+
+
+        audioChunks =
+            [];
+
+
+        mediaRecorder =
+            new MediaRecorder(
+                stream
+            );
+
+
+        mediaRecorder.ondataavailable =
+            function(event) {
+
+                if (
+                    event.data.size > 0
+                ) {
+
+                    audioChunks.push(
+                        event.data
+                    );
+                }
+            };
+
+
+        mediaRecorder.onstop =
+            async function() {
+
+                stream
+                    .getTracks()
+                    .forEach(
+                        track =>
+                            track.stop()
+                    );
+
+
+                const audioBlob =
+                    new Blob(
+                        audioChunks,
+                        {
+                            type:
+                                "audio/webm"
+                        }
+                    );
+
+
+                await sendAudio(
+                    audioBlob
+                );
+            };
+
+
+        mediaRecorder.start();
+
+
+        isRecording =
+            true;
+
+
+        const button =
+            document.getElementById(
+                "recordButton"
+            );
+
+
+        button.textContent =
+            "⏹ توقف";
+
+
+        button.classList.add(
+            "recording"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Microphone error:",
+            error
+        );
+
+
+        alert(
+            "دسترسی به میکروفون ممکن نشد."
+        );
+    }
+}
+
+
+/* =====================================================
+   STOP RECORDING
+===================================================== */
+
+function stopRecording() {
+
+    if (
+        mediaRecorder &&
+        isRecording
+    ) {
+
+        mediaRecorder.stop();
+
+
+        isRecording =
+            false;
+
+
+        const button =
+            document.getElementById(
+                "recordButton"
+            );
+
+
+        button.textContent =
+            "🎤";
+
+
+        button.classList.remove(
+            "recording"
+        );
+    }
+}
+
+
+/* =====================================================
+   SEND AUDIO
+===================================================== */
+
+async function sendAudio(blob) {
+
+    if (!selectedUser) {
+
+        alert(
+            "کاربر گیرنده انتخاب نشده."
+        );
+
+        return;
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "sender",
+        currentUsername
+    );
+
+
+    formData.append(
+        "receiver",
+        selectedUser
+    );
+
+
+    formData.append(
+        "token",
+        authToken
+    );
+
+
+    formData.append(
+        "audio",
+        blob,
+        "voice.webm"
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/upload-audio",
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            data.success
+        ) {
+
+            addAudioMessage(
+                currentUsername,
+                data.audio,
+                true
+            );
+
+        } else {
+
+            alert(
+                data.message ||
+                "ارسال ویس ناموفق بود."
+            );
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Audio upload error:",
+            error
+        );
+
+
+        alert(
+            "ارسال ویس ناموفق بود."
+        );
+    }
+}
+
+
+/* =====================================================
+   NEW MESSAGE
+===================================================== */
+
+function markNewMessage(
+    user
+) {
+
+    const buttons =
+        document.querySelectorAll(
+            "#users button"
+        );
+
+
+    buttons.forEach(
+        function(button) {
+
+            if (
+                button.dataset.user ===
+                user
+            ) {
+
+                button.classList.add(
+                    "new-message"
+                );
+            }
+        }
+    );
+}
+
+
+/* =====================================================
+   DATE
+===================================================== */
+
+function formatDate(
+    dateString
+) {
+
+    if (!dateString) {
+
+        return "";
+    }
+
+
+    const date =
+        new Date(
+            String(
+                dateString
+            ).replace(
+                " ",
+                "T"
+            )
+        );
+
+
+    if (
+        Number.isNaN(
+            date.getTime()
+        )
+    ) {
+
+        return String(
+            dateString
+        );
+    }
+
+
+    return date.toLocaleString(
+        "fa-IR",
+        {
+            year:
+                "numeric",
+
+            month:
+                "2-digit",
+
+            day:
+                "2-digit",
+
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit"
+        }
+    );
+}
+
+
+/* =====================================================
+   PROFILE
+===================================================== */
+
+function openProfile() {
+
+    document.getElementById(
+        "profilePopup"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "profileUsername"
+    ).textContent =
+        currentUsername;
+
+
+    document.getElementById(
+        "displayName"
+    ).value =
+        currentDisplayName;
+
+
+    document.getElementById(
+        "profileMessage"
+    ).textContent =
+        "";
+}
+
+
+function closeProfile() {
+
+    document.getElementById(
+        "profilePopup"
+    ).style.display =
+        "none";
+}
+
+
+async function saveProfile() {
+
+    const displayName =
+        document.getElementById(
+            "displayName"
+        ).value.trim();
+
+
+    const message =
+        document.getElementById(
+            "profileMessage"
+        );
+
+
+    if (!displayName) {
+
+        message.textContent =
+            "نام نمایشی را وارد کن.";
+
+        return;
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "username",
+        currentUsername
+    );
+
+
+    formData.append(
+        "token",
+        authToken
+    );
+
+
+    formData.append(
+        "display_name",
+        displayName
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/update-profile",
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            data.success
+        ) {
+
+            currentDisplayName =
+                data.display_name;
+
+
+            document.getElementById(
+                "myUsername"
+            ).textContent =
+                currentDisplayName;
+
+
+            message.textContent =
+                "✅ پروفایل ذخیره شد.";
+
+
+            setTimeout(
+                closeProfile,
+                700
+            );
+
+        } else {
+
+            message.textContent =
+                data.message;
+        }
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        message.textContent =
+            "ارتباط با سرور برقرار نشد.";
+    }
+}
+
+
+/* =====================================================
+   CHANGE PASSWORD
+===================================================== */
+
+function openChangePassword() {
+
+    document.getElementById(
+        "changePasswordPopup"
+    ).style.display =
+        "block";
+}
+
+
+function closeChangePassword() {
+
+    document.getElementById(
+        "changePasswordPopup"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "currentPassword"
+    ).value =
+        "";
+
+
+    document.getElementById(
+        "newPassword"
+    ).value =
+        "";
+
+
+    document.getElementById(
+        "confirmPassword"
+    ).value =
+        "";
+
+
+    document.getElementById(
+        "passwordMessage"
+    ).textContent =
+        "";
+}
+
+
+async function changePassword() {
+
+    const currentPassword =
+        document.getElementById(
+            "currentPassword"
+        ).value;
+
+
+    const newPassword =
+        document.getElementById(
+            "newPassword"
+        ).value;
+
+
+    const confirmPassword =
+        document.getElementById(
+            "confirmPassword"
+        ).value;
+
+
+    const message =
+        document.getElementById(
+            "passwordMessage"
+        );
+
+
+    if (
+        !currentPassword ||
+        !newPassword ||
+        !confirmPassword
+    ) {
+
+        message.textContent =
+            "همه فیلدها را پر کن.";
+
+        return;
+    }
+
+
+    if (
+        newPassword !==
+        confirmPassword
+    ) {
+
+        message.textContent =
+            "رمزهای جدید یکسان نیستند.";
+
+        return;
+    }
+
+
+    if (
+        newPassword.length < 6
+    ) {
+
+        message.textContent =
+            "رمز جدید باید حداقل ۶ کاراکتر باشد.";
+
+        return;
+    }
+
+
+    const formData =
+        new FormData();
+
+
+    formData.append(
+        "username",
+        currentUsername
+    );
+
+
+    formData.append(
+        "token",
+        authToken
+    );
+
+
+    formData.append(
+        "current_password",
+        currentPassword
+    );
+
+
+    formData.append(
+        "new_password",
+        newPassword
+    );
+
+
+    try {
+
+        const response =
+            await fetch(
+                "/change-password",
+                {
+                    method:
+                        "POST",
+
+                    body:
+                        formData
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            data.success
+        ) {
+
+            message.textContent =
+                "✅ رمز با موفقیت تغییر کرد.";
+
+        } else {
+
+            message.textContent =
+                data.message;
+        }
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        message.textContent =
+            "ارتباط با سرور برقرار نشد.";
+    }
+}
+
+
+/* =====================================================
+   WEBRTC
+===================================================== */
+
+function createPeerConnection(
+    otherUser
+) {
+
+    peerConnection =
+        new RTCPeerConnection(
+            rtcConfig
+        );
+
+
+    peerConnection.ontrack =
+        function(event) {
+
+            const remoteAudio =
+                document.getElementById(
+                    "remoteAudio"
+                );
+
+
+            if (
+                event.streams &&
+                event.streams[0]
+            ) {
+
+                remoteAudio.srcObject =
+                    event.streams[0];
+
+
+                remoteAudio.play()
+                    .catch(
+                        error =>
+                            console.log(
+                                "Audio play:",
+                                error
+                            )
+                    );
+            }
+        };
+
+
+    peerConnection.onicecandidate =
+        function(event) {
+
+            if (
+                event.candidate &&
+                socket &&
+                socket.readyState ===
+                    WebSocket.OPEN
+            ) {
+
+                socket.send(
+                    JSON.stringify({
+
+                        action:
+                            "ice-candidate",
+
+                        to:
+                            otherUser,
+
+                        candidate:
+                            event.candidate
+
+                    })
+                );
+            }
+        };
+
+
+    peerConnection.onconnectionstatechange =
+        function() {
+
+            if (!peerConnection) {
+
+                return;
+            }
+
+
+            console.log(
+                "Call state:",
+                peerConnection.connectionState
+            );
+
+
+            if (
+                peerConnection.connectionState ===
+                    "failed"
+            ) {
+
+                endCall();
+            }
+        };
+
+
+    return peerConnection;
+}
+
+
+/* =====================================================
+   START CALL
+===================================================== */
+
+async function startCall() {
+
+    if (!selectedUser) {
+
+        alert(
+            "اول یک کاربر را انتخاب کن."
+        );
+
+        return;
+    }
+
+
+    try {
+
+        pendingCandidates =
+            [];
+
+
+        localStream =
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+
+                    audio:
+                        true
+
+                });
+
+
+        createPeerConnection(
+            selectedUser
+        );
+
+
+        localStream
+            .getTracks()
+            .forEach(
+                track =>
+                    peerConnection.addTrack(
+                        track,
+                        localStream
+                    )
+            );
+
+
+        const offer =
+            await peerConnection
+                .createOffer();
+
+
+        await peerConnection
+            .setLocalDescription(
+                offer
+            );
+
+
+        socket.send(
+            JSON.stringify({
+
+                action:
+                    "call-offer",
+
+                to:
+                    selectedUser,
+
+                offer:
+                    peerConnection.localDescription
+
+            })
+        );
+
+
+        document.getElementById(
+            "callButton"
+        ).style.display =
+            "none";
+
+
+        document.getElementById(
+            "hangupButton"
+        ).style.display =
+            "inline-block";
+
+
+        document.getElementById(
+            "chatTitle"
+        ).textContent =
+            "📞 تماس با " +
+            selectedUser;
+
+    } catch (error) {
+
+        console.error(
+            "Call error:",
+            error
+        );
+
+
+        alert(
+            "دسترسی به میکروفون ممکن نشد."
+        );
+
+
+        endCall();
+    }
+}
+
+
+/* =====================================================
+   ACCEPT CALL
+===================================================== */
+
+async function acceptCall() {
+
+    if (
+        !incomingOffer ||
+        !incomingCaller
+    ) {
+
+        return;
+    }
+
+
+    try {
+
+        selectedUser =
+            incomingCaller;
+
+
+        document.getElementById(
+            "callPopup"
+        ).style.display =
+            "none";
+
+
+        localStream =
+            await navigator
+                .mediaDevices
+                .getUserMedia({
+
+                    audio:
+                        true
+
+                });
+
+
+        pendingCandidates =
+            [];
+
+
+        createPeerConnection(
+            incomingCaller
+        );
+
+
+        localStream
+            .getTracks()
+            .forEach(
+                track =>
+                    peerConnection.addTrack(
+                        track,
+                        localStream
+                    )
+            );
+
+
+        await peerConnection
+            .setRemoteDescription(
+                incomingOffer
+            );
+
+
+        await processPendingCandidates();
+
+
+        const answer =
+            await peerConnection
+                .createAnswer();
+
+
+        await peerConnection
+            .setLocalDescription(
+                answer
+            );
+
+
+        socket.send(
+            JSON.stringify({
+
+                action:
+                    "call-answer",
+
+                to:
+                    incomingCaller,
+
+                answer:
+                    peerConnection.localDescription
+
+            })
+        );
+
+
+        showCallButtons();
+
+
+        incomingCaller =
+            "";
+
+
+        incomingOffer =
+            null;
+
+    } catch (error) {
+
+        console.error(
+            "Accept call error:",
+            error
+        );
+
+
+        alert(
+            "برقراری تماس ناموفق بود."
+        );
+
+
+        rejectCall();
+    }
+}
+
+
+/* =====================================================
+   REJECT CALL
+===================================================== */
+
+function rejectCall() {
+
+    if (
+        incomingCaller &&
+        socket &&
+        socket.readyState ===
+            WebSocket.OPEN
+    ) {
+
+        socket.send(
+            JSON.stringify({
+
+                action:
+                    "call-rejected",
+
+                to:
+                    incomingCaller
+
+            })
+        );
+    }
+
+
+    document.getElementById(
+        "callPopup"
+    ).style.display =
+        "none";
+
+
+    incomingCaller =
+        "";
+
+
+    incomingOffer =
+        null;
+}
+
+
+/* =====================================================
+   HANG UP
+===================================================== */
+
+function hangUp() {
+
+    if (
+        selectedUser &&
+        socket &&
+        socket.readyState ===
+            WebSocket.OPEN
+    ) {
+
+        socket.send(
+            JSON.stringify({
+
+                action:
+                    "call-ended",
+
+                to:
+                    selectedUser
+
+            })
+        );
+    }
+
+
+    endCall();
+}
+
+
+/* =====================================================
+   END CALL
+===================================================== */
+
+function endCall() {
+
+    if (peerConnection) {
+
+        peerConnection.close();
+
+        peerConnection =
+            null;
+    }
+
+
+    if (localStream) {
+
+        localStream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
+
+        localStream =
+            null;
+    }
+
+
+    const remoteAudio =
+        document.getElementById(
+            "remoteAudio"
+        );
+
+
+    remoteAudio.srcObject =
+        null;
+
+
+    pendingCandidates =
+        [];
+
+
+    document.getElementById(
+        "callButton"
+    ).style.display =
+        "inline-block";
+
+
+    document.getElementById(
+        "callButton"
+    ).disabled =
+        !selectedUser;
+
+
+    document.getElementById(
+        "hangupButton"
+    ).style.display =
+        "none";
+
+
+    if (selectedUser) {
+
+        document.getElementById(
+            "chatTitle"
+        ).textContent =
+            "💬 چت با " +
+            selectedUser;
+    }
+}
+
+
+/* =====================================================
+   SHOW CALL BUTTONS
+===================================================== */
+
+function showCallButtons() {
+
+    document.getElementById(
+        "callButton"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "hangupButton"
+    ).style.display =
+        "inline-block";
+}
+
+
+/* =====================================================
+   ICE
+===================================================== */
+
+async function processPendingCandidates() {
+
+    if (
+        !peerConnection ||
+        !peerConnection.remoteDescription
+    ) {
+
+        return;
+    }
+
+
+    for (
+        const candidate
+        of pendingCandidates
+    ) {
+
+        try {
+
+            await peerConnection
+                .addIceCandidate(
+                    candidate
+                );
+
+        } catch (error) {
+
+            console.error(
+                "ICE error:",
+                error
+            );
+        }
+    }
+
+
+    pendingCandidates =
+        [];
+}
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+async function logout() {
+
+    if (
+        peerConnection
+    ) {
+
+        hangUp();
+    }
+
+
+    try {
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "username",
+            currentUsername
+        );
+
+
+        await fetch(
+            "/logout",
+            {
+                method:
+                    "POST",
+
+                body:
+                    formData
+            }
+        );
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+    }
+
+
+    if (socket) {
+
+        socket.close();
+    }
+
+
+    currentUsername =
+        "";
+
+    currentDisplayName =
+        "";
+
+    authToken =
+        "";
+
+    selectedUser =
+        "";
+
+
+    document.getElementById(
+        "chat"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "login"
+    ).style.display =
+        "block";
+
+
+    document.getElementById(
+        "username"
+    ).value =
+        "";
+
+
+    document.getElementById(
+        "password"
+    ).value =
+        "";
+
+
+    document.getElementById(
+        "loginMessage"
+    ).textContent =
+        "با موفقیت خارج شدی 👋";
+}
+
+</script>
+
+</body>
+
+</html>

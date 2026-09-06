@@ -1,7 +1,6 @@
 fastapi
-uvicorn[standard]
-python-multipart
+uvicorn
 psycopg[binary]
 python-dotenv
+python-multipart
 requests
-supabase

@@ -165,11 +165,23 @@ async function authAction(){
  currentUsername=d.username;currentDisplayName=d.display_name;currentAvatar=d.avatar||"";authToken=d.token;openChat();requestNotifications()
  }catch{msg.textContent="ارتباط با سرور برقرار نشد."}
 }
-function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));connectWebSocket()}
+let usersRefreshTimer=null;
+async function refreshUsersDirect(){
+ try{
+  const r=await fetch(`/api/users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:"no-store"});
+  const d=await r.json();
+  if(d.success){usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();}
+ }catch(err){console.warn("Users direct refresh failed",err)}
+}
+function startUsersRefresh(){
+ if(usersRefreshTimer)clearInterval(usersRefreshTimer);
+ usersRefreshTimer=setInterval(refreshUsersDirect,5000);
+}
+function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket()}
 function connectWebSocket(){
  const protocol=location.protocol==="https:"?"wss:":"ws:";
  socket=new WebSocket(`${protocol}//${location.host}/chat/${encodeURIComponent(currentUsername)}/${encodeURIComponent(authToken)}`);
- socket.onopen=()=>{requestNotifications()};
+ socket.onopen=()=>{requestNotifications();socket.send(JSON.stringify({action:"users"}))};
  socket.onmessage=e=>{try{handleSocket(JSON.parse(e.data))}catch(err){console.error("WebSocket message error",err)}};
  socket.onclose=()=>console.log("WebSocket closed");
 }

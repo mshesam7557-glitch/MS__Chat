@@ -744,6 +744,18 @@ async def register(username: str = Form(...), password: str = Form(...)):
         return {"success": False, "message": "این نام کاربری قبلاً ثبت شده است."}
 
 
+@app.get("/api/users")
+async def api_users(username: str, token: str):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود.", "users": []}
+    try:
+        users = await asyncio.to_thread(get_all_users)
+        return {"success": True, "users": users}
+    except Exception as error:
+        print("Users API error:", error)
+        return {"success": False, "message": "دریافت کاربران ناموفق بود.", "users": []}
+
+
 @app.post("/login")
 async def login(username: str = Form(...), password: str = Form(...)):
     username = username.strip()

@@ -69,6 +69,18 @@ VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com")
 
+# WebRTC ICE/TURN configuration. STUN is free; TURN is strongly recommended
+# for users behind restrictive NAT/firewalls. TURN credentials stay server-side
+# and are exposed only as short-lived/configured ICE values through the API.
+TURN_URLS = [x.strip() for x in os.getenv("TURN_URLS", "").split(",") if x.strip()]
+TURN_USERNAME = os.getenv("TURN_USERNAME", "")
+TURN_CREDENTIAL = os.getenv("TURN_CREDENTIAL", "")
+TURN_ICE_SERVERS_JSON = os.getenv("TURN_ICE_SERVERS_JSON", "")
+TURN_CREDENTIALS_URL = os.getenv("TURN_CREDENTIALS_URL", "")
+RTC_CONFIG_CACHE_TTL = 240
+_rtc_config_cache = None
+_rtc_config_cache_until = 0.0
+
 # Reuse HTTP connections to Supabase instead of opening a fresh TCP/TLS
 # connection for every upload/sign request.
 SUPABASE_SESSION = requests.Session()
@@ -827,6 +839,11 @@ async def background_image():
     return FileResponse("background.png", media_type="image/png")
 
 
+@app.get("/manifest.webmanifest")
+async def manifest_file():
+    return FileResponse("manifest.webmanifest", media_type="application/manifest+json", headers={"Cache-Control":"no-cache"})
+
+
 @app.get("/sw.js")
 async def service_worker():
     return FileResponse("sw.js", media_type="application/javascript", headers={"Cache-Control":"no-cache"})
@@ -1008,6 +1025,13 @@ async def admin_users(username: str, token: str):
 @app.get("/api/push-public-key")
 async def push_public_key():
     return {"success": bool(VAPID_PUBLIC_KEY), "public_key": VAPID_PUBLIC_KEY}
+
+
+@app.get("/api/rtc-config")
+async def rtc_config(username: str, token: str):
+    if not verify_token(username, token):
+        return {"success": False, "ice_servers": []}
+    return {"success": True, "ice_servers": await asyncio.to_thread(get_rtc_ice_servers)}
 
 
 @app.post("/api/push-subscribe")
@@ -1473,6 +1497,78 @@ async def group_recipients(group_id, sender):
 
 
 
+def _normalize_ice_servers(value):
+    """Normalize a provider response/env JSON into a list of RTCIceServer dicts."""
+    if isinstance(value, dict):
+        value = value.get("iceServers") or value.get("ice_servers") or []
+    if not isinstance(value, list):
+        return []
+    out = []
+    for item in value:
+        if not isinstance(item, dict) or not item.get("urls"):
+            continue
+        clean = {"urls": item["urls"]}
+        if item.get("username") is not None:
+            clean["username"] = item["username"]
+        if item.get("credential") is not None:
+            clean["credential"] = item["credential"]
+        out.append(clean)
+    return out
+
+
+def get_rtc_ice_servers():
+    global _rtc_config_cache, _rtc_config_cache_until
+    now = time.time()
+    if _rtc_config_cache is not None and now < _rtc_config_cache_until:
+        return _rtc_config_cache
+
+    # Cloudflare STUN + Google STUN as free direct-path discovery fallbacks.
+    servers = [
+        {"urls": "stun:stun.cloudflare.com:3478"},
+        {"urls": "stun:stun.l.google.com:19302"},
+    ]
+
+    # Easiest Render setup: comma-separated TURN urls + username/password.
+    if TURN_URLS and TURN_USERNAME and TURN_CREDENTIAL:
+        servers.append({
+            "urls": TURN_URLS if len(TURN_URLS) > 1 else TURN_URLS[0],
+            "username": TURN_USERNAME,
+            "credential": TURN_CREDENTIAL,
+        })
+
+    # Alternative: paste the exact ICE server array supplied by a TURN provider.
+    if TURN_ICE_SERVERS_JSON:
+        try:
+            servers.extend(_normalize_ice_servers(json.loads(TURN_ICE_SERVERS_JSON)))
+        except Exception as error:
+            print("Invalid TURN_ICE_SERVERS_JSON:", error)
+
+    # Optional provider endpoint (for short-lived credentials). Keep the API key
+    # or secret in Render, never in the browser source.
+    if TURN_CREDENTIALS_URL:
+        try:
+            response = requests.get(TURN_CREDENTIALS_URL, timeout=8)
+            if response.ok:
+                servers.extend(_normalize_ice_servers(response.json()))
+            else:
+                print("TURN credentials endpoint status:", response.status_code)
+        except Exception as error:
+            print("TURN credentials fetch error:", error)
+
+    # Remove exact duplicates while preserving order.
+    unique = []
+    seen = set()
+    for item in servers:
+        key = json.dumps(item, sort_keys=True, separators=(",", ":"))
+        if key not in seen:
+            seen.add(key)
+            unique.append(item)
+
+    _rtc_config_cache = unique
+    _rtc_config_cache_until = now + RTC_CONFIG_CACHE_TTL
+    return unique
+
+
 def _push_one(subscription_obj, title, body, url):
     if not webpush or not VAPID_PRIVATE_KEY:
         return True
@@ -1498,7 +1594,7 @@ def _push_one(subscription_obj, title, body, url):
         return True
 
 
-async def send_push_to_user(username, title, body):
+async def send_push_to_user(username, title, body, url="/"):
     if not VAPID_PRIVATE_KEY:
         return
     with get_db() as connection:
@@ -1513,7 +1609,7 @@ async def send_push_to_user(username, title, body):
             obj=json.loads(row["subscription_json"])
         except Exception:
             dead.append(row["id"]); continue
-        ok=await asyncio.to_thread(_push_one,obj,title,body,"/")
+        ok=await asyncio.to_thread(_push_one,obj,title,body,url)
         if not ok: dead.append(row["id"])
     if dead:
         with get_db() as connection:
@@ -1546,8 +1642,12 @@ async def deliver_message(msg):
             "group_id": msg["group_id"],
         })
         for username in recipients:
-            if not connections.get(username):
-                asyncio.create_task(send_push_to_user(username, "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید"))
+            asyncio.create_task(send_push_to_user(
+                username,
+                "پیام جدید در MS Chat",
+                msg.get("message") or "📎 فایل جدید",
+                "/",
+            ))
         return
 
     delivered = await send_to(msg["receiver"], {
@@ -1564,8 +1664,12 @@ async def deliver_message(msg):
             connection.commit()
         msg["status"] = "delivered"
     await send_to(msg["sender"], {"type": "sent", "message": msg})
-    if not connections.get(msg["receiver"]):
-        asyncio.create_task(send_push_to_user(msg["receiver"], "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید"))
+    asyncio.create_task(send_push_to_user(
+        msg["receiver"],
+        "پیام جدید در MS Chat",
+        msg.get("message") or "📎 فایل جدید",
+        "/",
+    ))
     await send_to(msg["sender"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["sender"])})
     await send_to(msg["receiver"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["receiver"])})
     await send_to(msg["receiver"], {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,msg["receiver"])})
@@ -1765,6 +1869,52 @@ async def delete_message(
 
 
 
+@app.post("/api/mark-read")
+async def api_mark_read(
+    username: str = Form(...),
+    token: str = Form(...),
+    sender: str = Form(...),
+):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    sender = (sender or "").strip()
+    if not sender or sender == username:
+        return {"success": False, "message": "فرستنده نامعتبر است."}
+    if not await asyncio.to_thread(user_exists, sender):
+        return {"success": False, "message": "این کاربر وجود ندارد."}
+
+    try:
+        with get_db() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE messages
+                    SET status='read'
+                    WHERE sender=%s AND receiver=%s
+                      AND group_id IS NULL
+                      AND status<>'read'
+                      AND deleted=FALSE
+                """, (sender, username))
+            connection.commit()
+
+        await send_to(sender, {"type": "messages-read", "by": username})
+        await send_to(username, {
+            "type": "unread",
+            "unread": await asyncio.to_thread(get_unread_counts, username),
+        })
+        await send_to(sender, {
+            "type": "recent-users",
+            "users": await asyncio.to_thread(get_recent_chat_users, sender),
+        })
+        await send_to(username, {
+            "type": "recent-users",
+            "users": await asyncio.to_thread(get_recent_chat_users, username),
+        })
+        return {"success": True}
+    except Exception as error:
+        print("Mark direct read error:", repr(error))
+        return {"success": False, "message": "علامت‌گذاری پیام‌ها ناموفق بود."}
+
+
 @app.get("/api/history")
 async def api_history(username: str, token: str, user: str):
     if not verify_token(username, token):
@@ -1839,16 +1989,12 @@ async def send_message_http(
         if not msg:
             return {"success": False, "message": "پیام ذخیره نشد."}
 
-        # لیست چت‌های اخیر را همین‌جا برگردان تا رابط کاربری بدون انتظار برای WebSocket
-        # کاربر تازه‌پیام‌داده‌شده را فوری در ستون «کاربران» نشان بدهد.
-        recent_users = await asyncio.to_thread(get_recent_chat_users, sender)
-
         # مهم: ذخیره‌سازی پیام از تحویل لحظه‌ای جداست.
         # در نسخه‌های قبل اگر WebSocket/اعلان/لیست گفتگو خطا می‌داد،
         # کل درخواست با «ارسال پیام ناموفق بود» برمی‌گشت. اینجا اول پیام را ذخیره
         # کرده‌ایم و بعد تحویل زنده را در پس‌زمینه انجام می‌دهیم.
         asyncio.create_task(deliver_message_safe(msg))
-        return {"success": True, "message": msg, "recent_users": recent_users}
+        return {"success": True, "message": msg}
     except Exception as error:
         print("HTTP text message error:", repr(error))
         return {"success": False, "message": f"خطا در ذخیره پیام: {type(error).__name__}"}

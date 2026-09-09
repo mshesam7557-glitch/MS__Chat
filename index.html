@@ -199,12 +199,39 @@ function startUsersRefresh(){
  usersRefreshTimer=setInterval(refreshUsersDirect,8000);
 }
 function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket()}
+
+function updateConnectionUI(connected){
+  const el=qs("chatSub");
+  if(!el) return;
+  if(selectedType){
+    const u=selectedType==="user"?userMap.get(selectedUser):null;
+    if(!connected){el.textContent="⚠️ در حال اتصال به سرور...";}
+    else if(u){el.textContent=u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین";}
+  }
+}
 function connectWebSocket(){
  const protocol=location.protocol==="https:"?"wss:":"ws:";
  socket=new WebSocket(`${protocol}//${location.host}/chat/${encodeURIComponent(currentUsername)}/${encodeURIComponent(authToken)}`);
- socket.onopen=()=>{requestNotifications();socket.send(JSON.stringify({action:"users"}))};
+ socket.onopen=()=>{
+  console.log("WebSocket connected");
+  requestNotifications();
+  socket.send(JSON.stringify({action:"users"}));
+  updateConnectionUI(true);
+  if(window.pendingSocketMessages?.length){
+    const pending=[...window.pendingSocketMessages];
+    window.pendingSocketMessages=[];
+    for(const payload of pending) socket.send(JSON.stringify(payload));
+  }
+};
  socket.onmessage=e=>{try{handleSocket(JSON.parse(e.data))}catch(err){console.error("WebSocket message error",err)}};
- socket.onclose=()=>console.log("WebSocket closed");
+ socket.onclose=()=>{
+  console.warn("WebSocket closed");
+  updateConnectionUI(false);
+  if(currentUsername && authToken){
+    clearTimeout(window.wsReconnectTimer);
+    window.wsReconnectTimer=setTimeout(connectWebSocket,1200);
+  }
+};
 }
 async function handleSocket(d){
  if(d.type==="users"||d.type==="presence"){const presence=new Map((d.users||[]).map(u=>[u.username,u]));if(d.type==="presence"){usersCache=usersCache.map(u=>presence.has(u.username)?{...u,online:presence.get(u.username).online,last_seen:presence.get(u.username).last_seen,avatar:presence.get(u.username).avatar,display_name:presence.get(u.username).display_name}:u);renderUsers()}userMap=presence;return}
@@ -288,7 +315,21 @@ function tick(s){return s==="read"?"✓✓":"✓"}
 function markMessagesRead(sender){if(socket?.readyState===1)socket.send(JSON.stringify({action:"mark-read",sender}))}
 function startReply(m){replyTo=m;qs("replyText").textContent=m.message_type==="text"?(m.message||"پیام"):m.message_type==="image"?"🖼️ عکس":"🎤 ویس";qs("replyBar").style.display="flex";qs("message").focus()}
 function cancelReply(){replyTo=null;qs("replyBar").style.display="none";qs("replyText").textContent=""}
-function sendMessage(){const text=qs("message").value.trim();if(!text||!selectedType||socket?.readyState!==1)return;socket.send(JSON.stringify({action:"message",to:targetKey(),message:text,reply_to:replyTo?.id||null}));qs("message").value="";cancelReply();setTimeout(refreshUsersDirect,300)}
+function sendMessage(){
+ const text=qs("message").value.trim();
+ if(!text||!selectedType)return;
+ const payload={action:"message",to:targetKey(),message:text,reply_to:replyTo?.id||null};
+ if(socket?.readyState===1){
+   socket.send(JSON.stringify(payload));
+ }else{
+   window.pendingSocketMessages=window.pendingSocketMessages||[];
+   window.pendingSocketMessages.push(payload);
+   connectWebSocket();
+ }
+ qs("message").value="";
+ cancelReply();
+ setTimeout(refreshUsersDirect,300);
+}
 function handleEnter(e){if(e.key==="Enter"){e.preventDefault();sendMessage()}}
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 async function deleteMessage(id){if(!confirm("پیام حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);const d=await (await fetch("/delete-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}

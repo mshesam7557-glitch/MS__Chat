@@ -192,7 +192,39 @@ async function authAction(){
  }catch{msg.textContent="ارتباط با سرور برقرار نشد."}
 }
 let usersRefreshTimer=null;
-async function refreshUsersDirect(){try{const r=await fetch(`/api/recent-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:"no-store"});const d=await r.json();if(d.success){usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();}}catch(err){console.warn("Recent users refresh failed",err)}}
+function upsertRecentUser(user, moveTop=true){
+  if(!user || !user.username || user.username===currentUsername) return;
+  const old=usersCache.find(u=>u.username===user.username)||{};
+  const merged={...old,...user};
+  usersCache=usersCache.filter(u=>u.username!==user.username);
+  if(moveTop) usersCache.unshift(merged); else usersCache.push(merged);
+  userMap.set(user.username, merged);
+  renderUsers();
+}
+
+async function refreshUsersDirect(){
+  try{
+    const r=await fetch(`/api/recent-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:"no-store"});
+    const d=await r.json();
+    if(d.success){
+      const incoming=d.users||[];
+      const selected=selectedType==="user"?usersCache.find(u=>u.username===selectedUser):null;
+      usersCache=[...incoming];
+      // While the fresh list is catching up, never make the active searched chat disappear.
+      if(selected && selected.username!==currentUsername && !usersCache.some(u=>u.username===selected.username)){
+        usersCache.unshift(selected);
+      }
+      userMap=new Map(usersCache.map(u=>[u.username,u]));
+      renderUsers();
+    }
+  }catch(err){console.warn("Recent users refresh failed",err)}
+}
+
+let recentRefreshTimer=null;
+function scheduleRecentUsersRefresh(delay=120){
+  clearTimeout(recentRefreshTimer);
+  recentRefreshTimer=setTimeout(()=>{recentRefreshTimer=null;refreshUsersDirect()},delay);
+}
 
 function startUsersRefresh(){
  if(usersRefreshTimer)clearInterval(usersRefreshTimer);
@@ -259,10 +291,23 @@ async function handleSocket(d){
  if(d.type==="group-info"){selectedGroup=d.group;return}
  if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("یک نفر را انتخاب کن 👈","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
  if(d.type==="message"){
-   const m=d.message; if((selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.sender===selectedUser)){addMessageObj(m,false);if(selectedType==="user")markMessagesRead(m.sender)}else{markNew(d.message.group_id?`group:${d.message.group_id}`:d.message.sender)}
+   const m=d.message;
+   if((selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.sender===selectedUser)){
+     addMessageObj(m,false);
+     if(selectedType==="user")markMessagesRead(m.sender);
+   }else{
+     markNew(d.message.group_id?`group:${d.message.group_id}`:d.message.sender);
+   }
+   if(!m.group_id) scheduleRecentUsersRefresh();
    notify(d.message.group_id?(groupsCache.find(g=>g.id===d.message.group_id)?.name||"گروه"):d.message.sender,d.message.message||"📎 فایل جدید"); return
  }
- if(d.type==="sent"){if(d.message){if((selectedType==="group"&&d.message.group_id===selectedGroupId)||(selectedType==="user"&&d.message.receiver===selectedUser))addMessageObj(d.message,true)}return}
+ if(d.type==="sent"){
+   if(d.message){
+     if((selectedType==="group"&&d.message.group_id===selectedGroupId)||(selectedType==="user"&&d.message.receiver===selectedUser))addMessageObj(d.message,true);
+     if(!d.message.group_id) scheduleRecentUsersRefresh();
+   }
+   return
+ }
  if(d.type==="message-updated"){replaceMessage(d.message);return}
  if(d.type==="message-deleted"){removeMessage(d.id);return}
  if(d.type==="messages-read"){document.querySelectorAll(".mine .statusTick").forEach(x=>x.textContent="✓✓");return}
@@ -345,9 +390,11 @@ async function sendMessage(){
  const input=qs("message");
  const text=input.value.trim();
  if(!text||!selectedType||sendingMessage)return;
+ const target=targetKey();
+ const selectedPeer=selectedType==="user"?usersCache.find(u=>u.username===selectedUser):null;
  const payload={
    sender:currentUsername,
-   receiver:targetKey(),
+   receiver:target,
    token:authToken,
    message:text,
    reply_to:replyTo?.id||""
@@ -362,10 +409,16 @@ async function sendMessage(){
      const visible=(selectedType==="group"&&d.message.group_id===selectedGroupId)||(selectedType==="user"&&d.message.receiver===selectedUser);
      if(visible)addMessageObj(d.message,true);
    }
+   // بلافاصله چت جدید را در لیست کاربران قرار بده؛ منتظر WebSocket یا polling نمان.
+   if(selectedType==="user"){
+     const returned=(d.recent_users||[]).find(u=>u.username===selectedUser);
+     if(returned) upsertRecentUser(returned,true);
+     else if(selectedPeer) upsertRecentUser(selectedPeer,true);
+   }
    input.value="";
    cancelReply();
-   // بروزرسانی لیست گفتگو را بعداً انجام بده تا روی ارسال پیام مکث ایجاد نکند.
-   setTimeout(refreshUsersDirect, 2000);
+   // فقط یک refresh سبک برای همگام‌سازی نهایی با دیتابیس.
+   scheduleRecentUsersRefresh(250);
  }catch(e){
    console.error("sendMessage failed",e);
    alert("ارتباط با سرور برای ارسال پیام برقرار نشد.");

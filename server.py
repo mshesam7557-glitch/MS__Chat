@@ -859,29 +859,52 @@ async def register(username: str = Form(...), password: str = Form(...)):
 
 
 def get_recent_chat_users(username):
+    """Return direct-chat users ordered by the most recent message.
+
+    Uses DISTINCT ON instead of GROUP BY for the latest conversation row.
+    This avoids PostgreSQL grouping errors with different schema/functional
+    dependency rules while keeping the query fast.
+    """
     with get_db() as connection:
         with connection.cursor() as cursor:
             cursor.execute("""
-                WITH recent AS (
-                    SELECT CASE WHEN sender=%s THEN receiver ELSE sender END AS other_user,
-                           MAX(id) AS last_id
+                WITH latest AS (
+                    SELECT DISTINCT ON (
+                        CASE WHEN sender=%s THEN receiver ELSE sender END
+                    )
+                        CASE WHEN sender=%s THEN receiver ELSE sender END AS other_user,
+                        id AS last_id
                     FROM messages
-                    WHERE group_id IS NULL AND (sender=%s OR receiver=%s)
-                    GROUP BY CASE WHEN sender=%s THEN receiver ELSE sender END
-                ), unread AS (
+                    WHERE group_id IS NULL
+                      AND (sender=%s OR receiver=%s)
+                    ORDER BY
+                        CASE WHEN sender=%s THEN receiver ELSE sender END,
+                        id DESC
+                ),
+                unread AS (
                     SELECT sender AS other_user, COUNT(*) AS unread_count
                     FROM messages
-                    WHERE group_id IS NULL AND receiver=%s AND status<>'read' AND deleted=FALSE
+                    WHERE group_id IS NULL
+                      AND receiver=%s
+                      AND status <> 'read'
+                      AND deleted = FALSE
                     GROUP BY sender
                 )
-                SELECT u.username, u.display_name, u.avatar, u.last_seen,
-                       COALESCE(unread.unread_count,0) AS unread_count
-                FROM recent
-                JOIN users u ON u.username=recent.other_user
-                LEFT JOIN unread ON unread.other_user=u.username
-                ORDER BY recent.last_id DESC
-            """, (username, username, username, username, username))
-            rows=cursor.fetchall()
+                SELECT
+                    u.username,
+                    u.display_name,
+                    u.avatar,
+                    u.last_seen,
+                    COALESCE(unread.unread_count, 0) AS unread_count
+                FROM latest
+                JOIN users u ON u.username = latest.other_user
+                LEFT JOIN unread ON unread.other_user = u.username
+                ORDER BY latest.last_id DESC
+            """,
+                (username, username, username, username, username, username)
+            )
+            rows = cursor.fetchall()
+
     return [{
         "username": r["username"],
         "display_name": r["display_name"] or r["username"],

@@ -1524,7 +1524,7 @@ async def deliver_message(msg):
         })
         for username in recipients:
             if not connections.get(username):
-                await send_push_to_user(username, "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید")
+                asyncio.create_task(send_push_to_user(username, "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید"))
         return
 
     delivered = await send_to(msg["receiver"], {
@@ -1542,7 +1542,7 @@ async def deliver_message(msg):
         msg["status"] = "delivered"
     await send_to(msg["sender"], {"type": "sent", "message": msg})
     if not connections.get(msg["receiver"]):
-        await send_push_to_user(msg["receiver"], "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید")
+        asyncio.create_task(send_push_to_user(msg["receiver"], "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید"))
     await send_to(msg["sender"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["sender"])})
     await send_to(msg["receiver"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["receiver"])})
     await send_to(msg["receiver"], {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,msg["receiver"])})
@@ -1739,6 +1739,87 @@ async def delete_message(
     msg = get_message(message_id)
     await notify_message_delete(msg)
     return {"success": True, "id": message_id}
+
+
+
+@app.get("/api/history")
+async def api_history(username: str, token: str, user: str):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    user = (user or "").strip()
+    if not user or user == username:
+        return {"success": True, "messages": []}
+    if not await asyncio.to_thread(user_exists, user):
+        return {"success": False, "message": "این کاربر وجود ندارد.", "messages": []}
+    messages = await asyncio.to_thread(get_direct_history, username, user)
+    return {"success": True, "messages": messages}
+
+
+@app.post("/send-message")
+async def send_message_http(
+    sender: str = Form(...),
+    receiver: str = Form(...),
+    token: str = Form(...),
+    message: str = Form(...),
+    reply_to: str = Form(""),
+):
+    """Reliable HTTP fallback for text messages.
+
+    Text sending must not depend on a healthy WebSocket. This endpoint saves the
+    message in PostgreSQL first, then delivers it over WebSocket when available.
+    That keeps offline/search-started chats reliable even when WS is reconnecting.
+    """
+    if not verify_token(sender, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+
+    receiver = (receiver or "").strip()
+    text = (message or "").strip()
+    if not receiver:
+        return {"success": False, "message": "گیرنده مشخص نیست."}
+    if not text:
+        return {"success": False, "message": "پیام خالی است."}
+    if len(text) > 5000:
+        return {"success": False, "message": "پیام خیلی طولانی است."}
+
+    if receiver.startswith("group:"):
+        try:
+            group_id = int(receiver.split(":", 1)[1])
+        except (TypeError, ValueError):
+            return {"success": False, "message": "گروه نامعتبر است."}
+        if not await asyncio.to_thread(is_group_member, group_id, sender):
+            return {"success": False, "message": "شما عضو این گروه نیستید."}
+        target_receiver = ""
+    else:
+        group_id = None
+        if not await asyncio.to_thread(user_exists, receiver):
+            return {"success": False, "message": "این کاربر وجود ندارد."}
+        target_receiver = receiver
+
+    try:
+        rid = int(reply_to) if reply_to else None
+    except (TypeError, ValueError):
+        rid = None
+
+    try:
+        mid = await asyncio.to_thread(
+            save_message,
+            sender,
+            target_receiver,
+            text,
+            "text",
+            None,
+            None,
+            rid,
+            group_id,
+        )
+        msg = await asyncio.to_thread(get_message, mid)
+        if not msg:
+            return {"success": False, "message": "پیام ذخیره نشد."}
+        await deliver_message(msg)
+        return {"success": True, "message": msg}
+    except Exception as error:
+        print("HTTP text message error:", repr(error))
+        return {"success": False, "message": "ارسال پیام ناموفق بود."}
 
 
 @app.websocket("/chat/{username}/{token}")

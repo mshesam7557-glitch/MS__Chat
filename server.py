@@ -7,6 +7,7 @@ import base64
 import time
 import asyncio
 import queue
+import json
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
@@ -17,6 +18,12 @@ from psycopg.rows import dict_row
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Form, UploadFile, File, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+
+try:
+    from pywebpush import webpush, WebPushException
+except Exception:
+    webpush = None
+    WebPushException = Exception
 
 load_dotenv()
 
@@ -51,8 +58,15 @@ ALLOWED_IMAGE_TYPES = {
 }
 ALLOWED_AUDIO_TYPES = {"audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg"}
 
+OWNER_USERNAME = "MS__Hesam"
+
+# username -> set of active WebSocket connections (multi-device friendly)
 connections = {}
 connection_kinds = {}
+
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com")
 
 # Reuse HTTP connections to Supabase instead of opening a fresh TCP/TLS
 # connection for every upload/sign request.
@@ -116,85 +130,119 @@ def get_db():
 
 
 def init_db():
-    with get_db() as connection:
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id BIGSERIAL PRIMARY KEY,
-                    username TEXT UNIQUE NOT NULL,
-                    password_hash TEXT NOT NULL,
-                    display_name TEXT,
-                    avatar TEXT,
-                    last_seen TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS messages (
-                    id BIGSERIAL PRIMARY KEY,
-                    sender TEXT NOT NULL,
-                    receiver TEXT NOT NULL,
-                    message TEXT,
-                    audio TEXT,
-                    status TEXT DEFAULT 'sent',
-                    message_type TEXT DEFAULT 'text',
-                    media TEXT,
-                    reply_to BIGINT,
-                    edited BOOLEAN DEFAULT FALSE,
-                    deleted BOOLEAN DEFAULT FALSE,
-                    group_id BIGINT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS groups (
-                    id BIGSERIAL PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    avatar TEXT,
-                    owner TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS group_create_requests (
-                    request_key TEXT PRIMARY KEY,
-                    group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS group_members (
-                    group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-                    username TEXT NOT NULL,
-                    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (group_id, username)
-                )
-            """)
+    """Run schema setup once per process, safely serialized across Render instances."""
+    last_error = None
+    for attempt in range(1, 4):
+        try:
+            # Use one dedicated connection for startup migrations.
+            with psycopg.connect(
+                DATABASE_URL,
+                row_factory=dict_row,
+                connect_timeout=20,
+            ) as connection:
+                with connection.cursor() as cursor:
+                    # Do not let the DB/pooler's default statement timeout kill
+                    # schema creation while another instance is deploying.
+                    cursor.execute("SET statement_timeout = 0")
+                    cursor.execute("SET lock_timeout = 0")
+                    cursor.execute("SELECT pg_advisory_lock(hashtext('ms_chat_schema_v5'))")
 
-            for sql in [
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio TEXT",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'sent'",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text'",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS media TEXT",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to BIGINT",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT FALSE",
-                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS group_id BIGINT",
-            ]:
-                cursor.execute(sql)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS users (
+                            id BIGSERIAL PRIMARY KEY,
+                            username TEXT UNIQUE NOT NULL,
+                            password_hash TEXT NOT NULL,
+                            display_name TEXT,
+                            avatar TEXT,
+                            last_seen TIMESTAMP,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS messages (
+                            id BIGSERIAL PRIMARY KEY,
+                            sender TEXT NOT NULL,
+                            receiver TEXT NOT NULL,
+                            message TEXT,
+                            audio TEXT,
+                            status TEXT DEFAULT 'sent',
+                            message_type TEXT DEFAULT 'text',
+                            media TEXT,
+                            reply_to BIGINT,
+                            edited BOOLEAN DEFAULT FALSE,
+                            deleted BOOLEAN DEFAULT FALSE,
+                            group_id BIGINT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS groups (
+                            id BIGSERIAL PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            avatar TEXT,
+                            owner TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS group_create_requests (
+                            request_key TEXT PRIMARY KEY,
+                            group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS group_members (
+                            group_id BIGINT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+                            username TEXT NOT NULL,
+                            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (group_id, username)
+                        )
+                    """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS push_subscriptions (
+                            id BIGSERIAL PRIMARY KEY,
+                            username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                            endpoint TEXT UNIQUE NOT NULL,
+                            subscription_json TEXT NOT NULL,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
 
-            # Query-path indexes for chat history and group membership.
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_direct ON messages(sender, receiver, id DESC) WHERE group_id IS NULL")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_direct_reverse ON messages(receiver, sender, id DESC) WHERE group_id IS NULL")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_group ON messages(group_id, id DESC) WHERE group_id IS NOT NULL")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_receiver_status ON messages(receiver, sender, status) WHERE group_id IS NULL AND deleted=FALSE")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(username, group_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_display_name ON users(LOWER(COALESCE(display_name, username)))")
+                    for sql in [
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT",
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
+                        "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio TEXT",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'sent'",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT DEFAULT 'text'",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS media TEXT",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to BIGINT",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited BOOLEAN DEFAULT FALSE",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted BOOLEAN DEFAULT FALSE",
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS group_id BIGINT",
+                    ]:
+                        cursor.execute(sql)
 
-        connection.commit()
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_direct ON messages(sender, receiver, id DESC) WHERE group_id IS NULL")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_direct_reverse ON messages(receiver, sender, id DESC) WHERE group_id IS NULL")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_group ON messages(group_id, id DESC) WHERE group_id IS NOT NULL")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_receiver_status ON messages(receiver, sender, status) WHERE group_id IS NULL AND deleted=FALSE")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(username, group_id)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_display_name ON users(LOWER(COALESCE(display_name, username)))")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender, receiver, id DESC)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver, status, id DESC) WHERE group_id IS NULL AND deleted=FALSE")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_username ON push_subscriptions(username)")
+
+                    cursor.execute("SELECT pg_advisory_unlock(hashtext('ms_chat_schema_v5'))")
+                connection.commit()
+            print("✅ Database schema is ready.")
+            return
+        except Exception as error:
+            last_error = error
+            print(f"⚠️ Database init attempt {attempt}/3 failed: {error}")
+            time.sleep(attempt * 2)
+    raise RuntimeError(f"Database initialization failed: {last_error}")
 
 
 init_db()
@@ -268,7 +316,7 @@ def get_user_info(username: str):
         "display_name": user["display_name"] or user["username"],
         "avatar": user["avatar"],
         "last_seen": now_iso(user["last_seen"]),
-        "online": username in connections,
+        "online": bool(connections.get(username)),
     }
 
 
@@ -302,7 +350,7 @@ def get_all_users():
         _users_cache = base
         _users_cache_until = now + USERS_CACHE_TTL
     return [
-        {**info, "online": username in connections}
+        {**info, "online": bool(connections.get(username))}
         for username, info in _users_cache.items()
     ]
 
@@ -513,28 +561,42 @@ def mark_last_seen(username: str):
 
 
 async def send_to(username: str, data: dict) -> bool:
-    ws = connections.get(username)
-    if not ws:
+    sockets=list(connections.get(username, set()))
+    if not sockets:
         return False
-    try:
-        await ws.send_json(data)
-        return True
-    except Exception:
-        return False
+    delivered=False
+    dead=[]
+    for ws in sockets:
+        try:
+            await ws.send_json(data)
+            delivered=True
+        except Exception:
+            dead.append(ws)
+    if dead and username in connections:
+        for ws in dead:
+            connections[username].discard(ws)
+        if not connections[username]:
+            connections.pop(username,None)
+            connection_kinds.pop(username,None)
+    return delivered
 
 
 async def broadcast_users():
-    users = get_all_users()
-    payload = {"type": "users", "users": users}
-    dead = []
-    for username, ws in list(connections.items()):
-        try:
-            await ws.send_json(payload)
-        except Exception:
-            dead.append(username)
-    for username in dead:
-        connections.pop(username, None)
-        connection_kinds.pop(username, None)
+    users = get_recent_or_search_broadcast_users()
+    payload = {"type": "presence", "users": users}
+    for username, sockets in list(connections.items()):
+        for ws in list(sockets):
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                sockets.discard(ws)
+        if not sockets:
+            connections.pop(username,None)
+            connection_kinds.pop(username,None)
+
+def get_recent_or_search_broadcast_users():
+    # Broadcast all users for presence/search compatibility; the UI decides which to show.
+    return get_all_users()
 
 
 def message_row_to_dict(row, signed_media=None):
@@ -721,6 +783,23 @@ async def home():
     return FileResponse("index.html")
 
 
+@app.get("/background.png")
+async def background_image():
+    return FileResponse("background.png", media_type="image/png")
+
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("sw.js", media_type="application/javascript")
+
+
+@app.get("/sw.js")
+async def service_worker():
+    return FileResponse("sw.js", media_type="application/javascript", headers={"Cache-Control":"no-cache"})
+
+
+
+
 @app.post("/register")
 async def register(username: str = Form(...), password: str = Form(...)):
     username = username.strip()
@@ -744,16 +823,168 @@ async def register(username: str = Form(...), password: str = Form(...)):
         return {"success": False, "message": "این نام کاربری قبلاً ثبت شده است."}
 
 
+
+def get_recent_chat_users(username):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                WITH recent AS (
+                    SELECT CASE WHEN sender=%s THEN receiver ELSE sender END AS other_user,
+                           MAX(id) AS last_id
+                    FROM messages
+                    WHERE group_id IS NULL AND (sender=%s OR receiver=%s)
+                    GROUP BY CASE WHEN sender=%s THEN receiver ELSE sender END
+                ), unread AS (
+                    SELECT sender AS other_user, COUNT(*) AS unread_count
+                    FROM messages
+                    WHERE group_id IS NULL AND receiver=%s AND status<>'read' AND deleted=FALSE
+                    GROUP BY sender
+                )
+                SELECT u.username, u.display_name, u.avatar, u.last_seen,
+                       COALESCE(unread.unread_count,0) AS unread_count
+                FROM recent
+                JOIN users u ON u.username=recent.other_user
+                LEFT JOIN unread ON unread.other_user=u.username
+                ORDER BY recent.last_id DESC
+            """, (username, username, username, username, username))
+            rows=cursor.fetchall()
+    return [{
+        "username": r["username"],
+        "display_name": r["display_name"] or r["username"],
+        "avatar": r["avatar"],
+        "last_seen": now_iso(r["last_seen"]),
+        "online": bool(connections.get(r["username"])),
+        "unread_count": int(r["unread_count"] or 0),
+    } for r in rows]
+
+
+def search_users(query, limit=50):
+    q=(query or '').strip()
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            if q:
+                like=f"%{q.lower()}%"
+                cursor.execute("""
+                    SELECT username, display_name, avatar, last_seen
+                    FROM users
+                    WHERE LOWER(username) LIKE %s OR LOWER(COALESCE(display_name,username)) LIKE %s
+                    ORDER BY LOWER(COALESCE(display_name,username)), username
+                    LIMIT %s
+                """, (like,like,limit))
+            else:
+                cursor.execute("""
+                    SELECT username, display_name, avatar, last_seen
+                    FROM users
+                    ORDER BY LOWER(COALESCE(display_name,username)), username
+                    LIMIT %s
+                """, (limit,))
+            rows=cursor.fetchall()
+    return [{
+        "username":r["username"],
+        "display_name":r["display_name"] or r["username"],
+        "avatar":r["avatar"],
+        "last_seen":now_iso(r["last_seen"]),
+        "online":bool(connections.get(r["username"])),
+    } for r in rows]
+
+
+def get_unread_counts(username):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT sender, COUNT(*) AS unread_count
+                FROM messages
+                WHERE group_id IS NULL AND receiver=%s AND status<>'read' AND deleted=FALSE
+                GROUP BY sender
+            """, (username,))
+            direct={r["sender"]:int(r["unread_count"]) for r in cursor.fetchall()}
+            cursor.execute("""
+                SELECT group_id, COUNT(*) AS unread_count
+                FROM messages
+                WHERE group_id IS NOT NULL AND status<>'read' AND deleted=FALSE
+                  AND sender<>%s AND EXISTS (
+                    SELECT 1 FROM group_members gm WHERE gm.group_id=messages.group_id AND gm.username=%s
+                  )
+                GROUP BY group_id
+            """, (username,username))
+            groups={str(r["group_id"]):int(r["unread_count"]) for r in cursor.fetchall()}
+    return {"direct":direct,"groups":groups}
+
 @app.get("/api/users")
 async def api_users(username: str, token: str):
     if not verify_token(username, token):
         return {"success": False, "message": "احراز هویت ناموفق بود.", "users": []}
     try:
-        users = await asyncio.to_thread(get_all_users)
+        users = await asyncio.to_thread(get_recent_chat_users, username)
         return {"success": True, "users": users}
     except Exception as error:
-        print("Users API error:", error)
-        return {"success": False, "message": "دریافت کاربران ناموفق بود.", "users": []}
+        print("Recent users API error:", error)
+        return {"success": False, "message": "دریافت چت‌ها ناموفق بود.", "users": []}
+
+
+@app.get("/api/recent-users")
+async def api_recent_users(username: str, token: str):
+    return await api_users(username, token)
+
+
+@app.get("/api/search-users")
+async def api_search_users(username: str, token: str, q: str = ""):
+    if not verify_token(username, token):
+        return {"success": False, "users": []}
+    return {"success": True, "users": await asyncio.to_thread(search_users, q, 50)}
+
+
+@app.get("/api/unread")
+async def api_unread(username: str, token: str):
+    if not verify_token(username, token):
+        return {"success": False, "unread": {}}
+    return {"success": True, "unread": await asyncio.to_thread(get_unread_counts, username)}
+
+
+@app.get("/api/admin/users")
+async def admin_users(username: str, token: str):
+    if not verify_token(username, token) or username != OWNER_USERNAME:
+        return {"success": False, "message": "دسترسی ندارید.", "users": []}
+    return {"success": True, "users": await asyncio.to_thread(get_all_users)}
+
+
+@app.get("/api/push-public-key")
+async def push_public_key():
+    return {"success": bool(VAPID_PUBLIC_KEY), "public_key": VAPID_PUBLIC_KEY}
+
+
+@app.post("/api/push-subscribe")
+async def push_subscribe(username: str = Form(...), token: str = Form(...), subscription: str = Form(...)):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    try:
+        obj=json.loads(subscription)
+        endpoint=obj.get("endpoint")
+        if not endpoint:
+            return {"success": False, "message": "اشتراک اعلان نامعتبر است."}
+        with get_db() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO push_subscriptions(username,endpoint,subscription_json)
+                    VALUES(%s,%s,%s)
+                    ON CONFLICT(endpoint) DO UPDATE SET username=EXCLUDED.username, subscription_json=EXCLUDED.subscription_json
+                """,(username,endpoint,json.dumps(obj,separators=(',',':'))))
+            connection.commit()
+        return {"success": True}
+    except Exception as error:
+        print("Push subscribe error:", error)
+        return {"success": False, "message": "ثبت اعلان ناموفق بود."}
+
+
+@app.post("/api/push-unsubscribe")
+async def push_unsubscribe(username: str = Form(...), token: str = Form(...), endpoint: str = Form(...)):
+    if not verify_token(username, token):
+        return {"success": False}
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM push_subscriptions WHERE username=%s AND endpoint=%s",(username,endpoint))
+        connection.commit()
+    return {"success": True}
 
 
 @app.post("/login")
@@ -768,9 +999,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
             user = cursor.fetchone()
     if not user or not verify_password(password, user["password_hash"]):
         return {"success": False, "message": "نام کاربری یا رمز عبور اشتباه است."}
-    if username in connections:
-        return {"success": False, "message": "این حساب در حال حاضر وارد شده است."}
-    return {
+        return {
         "success": True,
         "username": username,
         "display_name": user["display_name"] or username,
@@ -783,16 +1012,50 @@ async def login(username: str = Form(...), password: str = Form(...)):
 async def logout(username: str = Form(...), token: str = Form("")):
     if token and not verify_token(username, token):
         return {"success": False, "message": "احراز هویت ناموفق بود."}
-    ws = connections.pop(username, None)
+    sockets=list(connections.get(username, set()))
+    connections.pop(username, None)
     connection_kinds.pop(username, None)
     mark_last_seen(username)
-    if ws:
+    for ws in sockets:
         try:
             await ws.close()
         except Exception:
             pass
     await broadcast_users()
     return {"success": True}
+
+
+@app.post("/delete-account")
+async def delete_account(username: str = Form(...), token: str = Form(...), target_username: str = Form("")):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    target=target_username.strip() or username
+    if target != username and username != OWNER_USERNAME:
+        return {"success": False, "message": "فقط صاحب MS Chat می‌تواند حساب شخص دیگری را حذف کند."}
+    if not await asyncio.to_thread(user_exists, target):
+        return {"success": False, "message": "حساب پیدا نشد."}
+
+    # Snapshot groups/messages/media before cascading deletion.
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id FROM groups WHERE owner=%s", (target,))
+            owned_groups=[r["id"] for r in cursor.fetchall()]
+            for gid in owned_groups:
+                cursor.execute("DELETE FROM messages WHERE group_id=%s", (gid,))
+            if owned_groups:
+                cursor.execute("DELETE FROM groups WHERE owner=%s", (target,))
+            cursor.execute("DELETE FROM group_members WHERE username=%s", (target,))
+            cursor.execute("DELETE FROM messages WHERE sender=%s OR receiver=%s", (target,target))
+            cursor.execute("DELETE FROM push_subscriptions WHERE username=%s", (target,))
+            cursor.execute("DELETE FROM users WHERE username=%s", (target,))
+        connection.commit()
+    _group_info_cache.clear(); invalidate_users_cache(); invalidate_membership_cache()
+    for ws in list(connections.get(target,set())):
+        try: await ws.close()
+        except Exception: pass
+    connections.pop(target,None); connection_kinds.pop(target,None)
+    await broadcast_users()
+    return {"success": True, "deleted_username": target}
 
 
 @app.post("/update-profile")
@@ -1152,6 +1415,56 @@ async def group_recipients(group_id, sender):
             return [r["username"] for r in cursor.fetchall()]
 
 
+
+def _push_one(subscription_obj, title, body, url):
+    if not webpush or not VAPID_PRIVATE_KEY:
+        return True
+    try:
+        webpush(
+            subscription_info=subscription_obj,
+            data=json.dumps({"title":title,"body":body,"url":url}),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub":VAPID_CLAIMS_EMAIL},
+        )
+        return True
+    except WebPushException as error:
+        try:
+            status=getattr(error.response,"status_code",None)
+            if status in (404,410):
+                return False
+        except Exception:
+            pass
+        print("Web push error:", error)
+        return True
+    except Exception as error:
+        print("Web push exception:", error)
+        return True
+
+
+async def send_push_to_user(username, title, body):
+    if not VAPID_PRIVATE_KEY:
+        return
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id,endpoint,subscription_json FROM push_subscriptions WHERE username=%s",(username,))
+            rows=cursor.fetchall()
+    if not rows:
+        return
+    dead=[]
+    for row in rows:
+        try:
+            obj=json.loads(row["subscription_json"])
+        except Exception:
+            dead.append(row["id"]); continue
+        ok=await asyncio.to_thread(_push_one,obj,title,body,"/")
+        if not ok: dead.append(row["id"])
+    if dead:
+        with get_db() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM push_subscriptions WHERE id = ANY(%s)",(dead,))
+            connection.commit()
+
+
 async def deliver_message(msg):
     if msg["group_id"]:
         recipients = await group_recipients(msg["group_id"], msg["sender"])
@@ -1175,6 +1488,9 @@ async def deliver_message(msg):
             "message": msg,
             "group_id": msg["group_id"],
         })
+        for username in recipients:
+            if not connections.get(username):
+                await send_push_to_user(username, "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید")
         return
 
     delivered = await send_to(msg["receiver"], {
@@ -1191,6 +1507,11 @@ async def deliver_message(msg):
             connection.commit()
         msg["status"] = "delivered"
     await send_to(msg["sender"], {"type": "sent", "message": msg})
+    if not connections.get(msg["receiver"]):
+        await send_push_to_user(msg["receiver"], "پیام جدید در MS Chat", msg.get("message") or "📎 فایل جدید")
+    await send_to(msg["sender"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["sender"])})
+    await send_to(msg["receiver"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["receiver"])})
+    await send_to(msg["receiver"], {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,msg["receiver"])})
 
 
 async def notify_message_update(msg):
@@ -1392,18 +1713,22 @@ async def chat(websocket: WebSocket, username: str, token: str):
         await websocket.close(code=1008)
         return
     await websocket.accept()
-    connections[username] = websocket
-    connection_kinds[username] = "web"
+    connections.setdefault(username, set()).add(websocket)
+    connection_kinds.setdefault(username, set()).add("web")
     await broadcast_users()
+    await websocket.send_json({"type": "presence", "users": await asyncio.to_thread(get_all_users)})
+    await websocket.send_json({"type": "recent-users", "users": await asyncio.to_thread(get_recent_chat_users, username)})
     await websocket.send_json({"type": "groups", "groups": await asyncio.to_thread(get_user_groups, username)})
+    await websocket.send_json({"type": "unread", "unread": await asyncio.to_thread(get_unread_counts, username)})
     try:
         while True:
             data = await websocket.receive_json()
             action = data.get("action")
 
             if action == "users":
-                await websocket.send_json({"type": "users", "users": await asyncio.to_thread(get_all_users)})
+                await websocket.send_json({"type": "recent-users", "users": await asyncio.to_thread(get_recent_chat_users, username)})
                 await websocket.send_json({"type": "groups", "groups": await asyncio.to_thread(get_user_groups, username)})
+                await websocket.send_json({"type": "unread", "unread": await asyncio.to_thread(get_unread_counts, username)})
                 continue
 
             if action == "groups":
@@ -1440,6 +1765,23 @@ async def chat(websocket: WebSocket, username: str, token: str):
                 })
                 continue
 
+            if action == "mark-group-read":
+                try:
+                    gid = int(data.get("group_id"))
+                except (TypeError, ValueError):
+                    continue
+                if not await asyncio.to_thread(is_group_member, gid, username):
+                    continue
+                with get_db() as connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute("""
+                            UPDATE messages SET status='read'
+                            WHERE group_id=%s AND sender<>%s AND status<>'read' AND deleted=FALSE
+                        """, (gid, username))
+                    connection.commit()
+                await send_to(username, {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,username)})
+                continue
+
             if action == "mark-read":
                 sender = data.get("sender")
                 with get_db() as connection:
@@ -1451,6 +1793,8 @@ async def chat(websocket: WebSocket, username: str, token: str):
                         """, (sender, username))
                     connection.commit()
                 await send_to(sender, {"type": "messages-read", "by": username})
+                await send_to(username, {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,username)})
+                await send_to(sender, {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,sender)})
                 continue
 
             if action == "message":
@@ -1502,15 +1846,19 @@ async def chat(websocket: WebSocket, username: str, token: str):
                 continue
 
     except WebSocketDisconnect:
-        if connections.get(username) == websocket:
-            connections.pop(username, None)
-            connection_kinds.pop(username, None)
-        mark_last_seen(username)
+        sockets=connections.get(username,set())
+        sockets.discard(websocket)
+        if not sockets:
+            connections.pop(username,None)
+            connection_kinds.pop(username,None)
+            mark_last_seen(username)
         await broadcast_users()
     except Exception as error:
         print("WebSocket error:", error)
-        if connections.get(username) == websocket:
-            connections.pop(username, None)
-            connection_kinds.pop(username, None)
-        mark_last_seen(username)
+        sockets=connections.get(username,set())
+        sockets.discard(websocket)
+        if not sockets:
+            connections.pop(username,None)
+            connection_kinds.pop(username,None)
+            mark_last_seen(username)
         await broadcast_users()

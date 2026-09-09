@@ -1816,13 +1816,16 @@ async def send_message_http(
         if not msg:
             return {"success": False, "message": "پیام ذخیره نشد."}
 
+        # لیست چت‌های اخیر را همین‌جا برگردان تا رابط کاربری بدون انتظار برای WebSocket
+        # کاربر تازه‌پیام‌داده‌شده را فوری در ستون «کاربران» نشان بدهد.
+        recent_users = await asyncio.to_thread(get_recent_chat_users, sender)
+
         # مهم: ذخیره‌سازی پیام از تحویل لحظه‌ای جداست.
         # در نسخه‌های قبل اگر WebSocket/اعلان/لیست گفتگو خطا می‌داد،
-        # کل درخواست با «ارسال پیام ناموفق بود» برمی‌گشت؛ در حالی که پیام
-        # ممکن بود داخل PostgreSQL ذخیره شده باشد. اینجا بلافاصله موفقیت را
-        # برمی‌گردانیم و تحویل زنده را در پس‌زمینه انجام می‌دهیم.
+        # کل درخواست با «ارسال پیام ناموفق بود» برمی‌گشت. اینجا اول پیام را ذخیره
+        # کرده‌ایم و بعد تحویل زنده را در پس‌زمینه انجام می‌دهیم.
         asyncio.create_task(deliver_message_safe(msg))
-        return {"success": True, "message": msg}
+        return {"success": True, "message": msg, "recent_users": recent_users}
     except Exception as error:
         print("HTTP text message error:", repr(error))
         return {"success": False, "message": f"خطا در ذخیره پیام: {type(error).__name__}"}

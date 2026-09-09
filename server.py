@@ -790,11 +790,6 @@ async def background_image():
 
 @app.get("/sw.js")
 async def service_worker():
-    return FileResponse("sw.js", media_type="application/javascript")
-
-
-@app.get("/sw.js")
-async def service_worker():
     return FileResponse("sw.js", media_type="application/javascript", headers={"Cache-Control":"no-cache"})
 
 
@@ -999,7 +994,7 @@ async def login(username: str = Form(...), password: str = Form(...)):
             user = cursor.fetchone()
     if not user or not verify_password(password, user["password_hash"]):
         return {"success": False, "message": "نام کاربری یا رمز عبور اشتباه است."}
-        return {
+    return {
         "success": True,
         "username": username,
         "display_name": user["display_name"] or username,

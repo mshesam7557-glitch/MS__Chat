@@ -97,7 +97,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
 
 
-DB_POOL_SIZE = 6
+DB_POOL_SIZE = 4
 
 class _DBPool:
     def __init__(self, size=DB_POOL_SIZE):
@@ -105,7 +105,7 @@ class _DBPool:
         self.q = queue.LifoQueue(maxsize=size)
         self.connections = []
         for _ in range(size):
-            conn = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10)
+            conn = psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=15)
             self.connections.append(conn)
             self.q.put(conn)
 
@@ -123,11 +123,10 @@ class _DBPool:
         finally:
             self.q.put(conn)
 
-DB_POOL = _DBPool()
-
-def get_db():
-    return DB_POOL.connection()
-
+DB_POOL = None
+_DB_POOL_LOCK = threading.Lock()
+_SCHEMA_LOCK = threading.Lock()
+_SCHEMA_READY = False
 
 def init_db():
     """Run schema setup once per process, safely serialized across Render instances."""
@@ -143,9 +142,9 @@ def init_db():
                 with connection.cursor() as cursor:
                     # Do not let the DB/pooler's default statement timeout kill
                     # schema creation while another instance is deploying.
-                    cursor.execute("SET statement_timeout = 0")
-                    cursor.execute("SET lock_timeout = 0")
-                    cursor.execute("SELECT pg_advisory_lock(hashtext('ms_chat_schema_v5'))")
+                    cursor.execute("SET statement_timeout = 15000")
+                    cursor.execute("SET lock_timeout = 5000")
+                    cursor.execute("SELECT pg_advisory_lock(hashtext('ms_chat_schema_v6'))")
 
                     cursor.execute("""
                         CREATE TABLE IF NOT EXISTS users (
@@ -234,7 +233,7 @@ def init_db():
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver, status, id DESC) WHERE group_id IS NULL AND deleted=FALSE")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_username ON push_subscriptions(username)")
 
-                    cursor.execute("SELECT pg_advisory_unlock(hashtext('ms_chat_schema_v5'))")
+                    cursor.execute("SELECT pg_advisory_unlock(hashtext('ms_chat_schema_v6'))")
                 connection.commit()
             print("✅ Database schema is ready.")
             return
@@ -245,7 +244,41 @@ def init_db():
     raise RuntimeError(f"Database initialization failed: {last_error}")
 
 
-init_db()
+def _ensure_schema():
+    global _SCHEMA_READY
+    if _SCHEMA_READY:
+        return
+    with _SCHEMA_LOCK:
+        if _SCHEMA_READY:
+            return
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                init_db()
+                _SCHEMA_READY = True
+                print("✅ Database schema is ready.")
+                return
+            except Exception as error:
+                last_error = error
+                print(f"⚠️ Database schema attempt {attempt}/3 failed: {error}")
+                if attempt < 3:
+                    time.sleep(attempt * 1.5)
+        raise RuntimeError(f"Database schema initialization failed: {last_error}")
+
+
+def _get_pool():
+    global DB_POOL
+    if DB_POOL is None:
+        with _DB_POOL_LOCK:
+            if DB_POOL is None:
+                DB_POOL = _DBPool()
+    return DB_POOL
+
+
+def get_db():
+    # Lazy initialization keeps Render's port-binding path free of DB work.
+    _ensure_schema()
+    return _get_pool().connection()
 
 
 def hash_password(password: str) -> str:
@@ -776,6 +809,11 @@ def get_message(message_id):
     if not row:
         return None
     return message_row_to_dict(row)
+
+
+@app.get("/health")
+async def health():
+    return {"ok": True}
 
 
 @app.get("/")

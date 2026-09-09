@@ -4,3 +4,5 @@ psycopg[binary]
 python-dotenv
 python-multipart
 requests
+pywebpush
+cryptography

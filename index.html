@@ -196,7 +196,7 @@ async function refreshUsersDirect(){try{const r=await fetch(`/api/recent-users?u
 
 function startUsersRefresh(){
  if(usersRefreshTimer)clearInterval(usersRefreshTimer);
- usersRefreshTimer=setInterval(refreshUsersDirect,8000);
+ usersRefreshTimer=setInterval(()=>{if(!document.hidden)refreshUsersDirect()},15000);
 }
 function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket()}
 
@@ -209,30 +209,45 @@ function updateConnectionUI(connected){
     else if(u){el.textContent=u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین";}
   }
 }
+let wsReconnectDelay=1500;
 function connectWebSocket(){
+ if(!currentUsername||!authToken)return;
+ if(socket&&(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING))return;
  const protocol=location.protocol==="https:"?"wss:":"ws:";
- socket=new WebSocket(`${protocol}//${location.host}/chat/${encodeURIComponent(currentUsername)}/${encodeURIComponent(authToken)}`);
+ try{socket=new WebSocket(`${protocol}//${location.host}/chat/${encodeURIComponent(currentUsername)}/${encodeURIComponent(authToken)}`)}catch(e){scheduleWsReconnect();return}
  socket.onopen=()=>{
-  console.log("WebSocket connected");
-  requestNotifications();
-  socket.send(JSON.stringify({action:"users"}));
-  updateConnectionUI(true);
-  if(window.pendingSocketMessages?.length){
-    const pending=[...window.pendingSocketMessages];
-    window.pendingSocketMessages=[];
-    for(const payload of pending) socket.send(JSON.stringify(payload));
-  }
-};
+   console.log("WebSocket connected");
+   wsReconnectDelay=1500;
+   requestNotifications();
+   try{socket.send(JSON.stringify({action:"users"}))}catch{}
+   updateConnectionUI(true);
+   const pending=window.pendingSocketMessages||[];
+   window.pendingSocketMessages=[];
+   for(const payload of pending){try{socket.send(JSON.stringify(payload))}catch{window.pendingSocketMessages.unshift(payload);break}}
+ };
  socket.onmessage=e=>{try{handleSocket(JSON.parse(e.data))}catch(err){console.error("WebSocket message error",err)}};
+ socket.onerror=e=>{console.warn("WebSocket error",e)};
  socket.onclose=()=>{
-  console.warn("WebSocket closed");
-  updateConnectionUI(false);
-  if(currentUsername && authToken){
-    clearTimeout(window.wsReconnectTimer);
-    window.wsReconnectTimer=setTimeout(connectWebSocket,1200);
-  }
-};
+   console.warn("WebSocket closed");
+   updateConnectionUI(false);
+   scheduleWsReconnect();
+ };
 }
+function scheduleWsReconnect(){
+ if(!currentUsername||!authToken)return;
+ clearTimeout(window.wsReconnectTimer);
+ const delay=wsReconnectDelay;
+ wsReconnectDelay=Math.min(wsReconnectDelay*2,15000);
+ window.wsReconnectTimer=setTimeout(()=>{connectWebSocket()},delay);
+}
+function sendWs(payload){
+ if(socket?.readyState===WebSocket.OPEN){try{socket.send(JSON.stringify(payload));return true}catch{}}
+ window.pendingSocketMessages=window.pendingSocketMessages||[];
+ window.pendingSocketMessages.push(payload);
+ connectWebSocket();
+ return false;
+}
+
 async function handleSocket(d){
  if(d.type==="users"||d.type==="presence"){const presence=new Map((d.users||[]).map(u=>[u.username,u]));if(d.type==="presence"){usersCache=usersCache.map(u=>presence.has(u.username)?{...u,online:presence.get(u.username).online,last_seen:presence.get(u.username).last_seen,avatar:presence.get(u.username).avatar,display_name:presence.get(u.username).display_name}:u);renderUsers()}userMap=presence;return}
  if(d.type==="recent-users"){usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();return}
@@ -272,13 +287,23 @@ function renderGroups(){
  div.appendChild(frag);
 }
 const newSet=new Set();function markNew(k){newSet.add(k);if(String(k).startsWith("group:")){groupButtonMap.get(String(k).slice(6))?.classList.add("new")}else{userButtonMap.get(k)?.classList.add("new")}}
-function loadGroups(){if(socket?.readyState===1)socket.send(JSON.stringify({action:"groups"}))}
+function loadGroups(){sendWs({action:"groups"})}
 
 function searchUsersDebounced(){clearTimeout(searchTimer);searchTimer=setTimeout(searchUsers,250)}
 async function searchUsers(){const q=qs("userSearch").value.trim();const box=qs("searchResults");if(!q){box.innerHTML="";return}try{const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(q)}`)).json();box.innerHTML="";(d.users||[]).filter(u=>u.username!==currentUsername).forEach(u=>{const b=document.createElement("div");b.className="searchItem";const av=document.createElement("img");av.className="avatar tiny";setAvatar(av,u.avatar,u.display_name,userAvatarUrl(u.username));const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(u.display_name)}</b><div class="muted">${escapeHtml(u.username)} • ${u.online?'🟢 آنلاین':'⚫ آفلاین'}</div>`;b.append(av,t);b.onclick=()=>{if(!usersCache.some(x=>x.username===u.username)){usersCache.unshift(u);userMap.set(u.username,u);renderUsers()}qs("searchResults").innerHTML="";qs("userSearch").value="";selectUser(u)};box.appendChild(b)})}catch(e){console.warn(e)}}
 
-function selectUser(u){selectedType="user";selectedUser=u.username;unreadState.direct[u.username]=0;u.unread_count=0;renderUsers();selectedGroupId=null;selectedGroup=null;qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);qs("callButton").disabled=!u.online;qs("videoButton").disabled=!u.online;qs("messages").innerHTML="";cancelReply();socket?.send(JSON.stringify({action:"history",user:u.username}))}
-function selectGroup(g){selectedType="group";unreadState.groups[String(g.id)]=0;renderGroups();selectedUser="";if(socket?.readyState===1)socket.send(JSON.stringify({action:"mark-group-read",group_id:g.id}));selectedGroupId=g.id;selectedGroup=g;setHeader(g.name,g.avatar,groupAvatarUrl(g.id),"👥 "+(g.members_count||0)+" عضو");enableComposer(true);qs("membersButton").style.display="inline-block";qs("deleteGroupButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";qs("messages").innerHTML="";cancelReply();if(socket?.readyState===1){socket.send(JSON.stringify({action:"group-history",group_id:g.id}));setTimeout(()=>socket.send(JSON.stringify({action:"group-info",group_id:g.id})),0)}}
+async function loadDirectHistory(username){
+ try{
+   const r=await fetch(`/api/history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&user=${encodeURIComponent(username)}`,{cache:"no-store"});
+   const d=await r.json();
+   if(selectedType==="user"&&selectedUser===username){showHistory(d.messages||[])}
+ }catch(e){
+   console.warn("History load failed",e);
+   sendWs({action:"history",user:username});
+ }
+}
+function selectUser(u){selectedType="user";selectedUser=u.username;unreadState.direct[u.username]=0;u.unread_count=0;renderUsers();selectedGroupId=null;selectedGroup=null;qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);qs("callButton").disabled=!u.online;qs("videoButton").disabled=!u.online;qs("messages").innerHTML="";cancelReply();loadDirectHistory(u.username)}
+function selectGroup(g){selectedType="group";unreadState.groups[String(g.id)]=0;renderGroups();selectedUser="";sendWs({action:"mark-group-read",group_id:g.id});selectedGroupId=g.id;selectedGroup=g;setHeader(g.name,g.avatar,groupAvatarUrl(g.id),"👥 "+(g.members_count||0)+" عضو");enableComposer(true);qs("membersButton").style.display="inline-block";qs("deleteGroupButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";qs("messages").innerHTML="";cancelReply();sendWs({action:"group-history",group_id:g.id});setTimeout(()=>sendWs({action:"group-info",group_id:g.id}),0);}
 function setHeader(name,avatar,avatarFallback,sub){qs("chatTitle").textContent=name;qs("chatSub").textContent=sub||"";setAvatar(qs("chatAvatar"),avatar,name,avatarFallback)}
 function enableComposer(v){["message","sendButton","recordButton","imageButton","callButton","videoButton"].forEach(id=>qs(id).disabled=!v);qs("hangupButton").style.display="none"}
 function isNearBottom(){const b=qs("messages");return b.scrollHeight-b.scrollTop-b.clientHeight<140}
@@ -312,24 +337,44 @@ function removeMessage(id){const key=String(id),old=messageDataMap.get(key);if(!
 function findMessageById(id){return messageDataMap.get(String(id))||null}
 function scrollBottom(){const d=qs("messages");d.scrollTop=d.scrollHeight}
 function tick(s){return s==="read"?"✓✓":"✓"}
-function markMessagesRead(sender){if(socket?.readyState===1)socket.send(JSON.stringify({action:"mark-read",sender}))}
+function markMessagesRead(sender){sendWs({action:"mark-read",sender})}
 function startReply(m){replyTo=m;qs("replyText").textContent=m.message_type==="text"?(m.message||"پیام"):m.message_type==="image"?"🖼️ عکس":"🎤 ویس";qs("replyBar").style.display="flex";qs("message").focus()}
 function cancelReply(){replyTo=null;qs("replyBar").style.display="none";qs("replyText").textContent=""}
-function sendMessage(){
- const text=qs("message").value.trim();
- if(!text||!selectedType)return;
- const payload={action:"message",to:targetKey(),message:text,reply_to:replyTo?.id||null};
- if(socket?.readyState===1){
-   socket.send(JSON.stringify(payload));
- }else{
-   window.pendingSocketMessages=window.pendingSocketMessages||[];
-   window.pendingSocketMessages.push(payload);
-   connectWebSocket();
+let sendingMessage=false;
+async function sendMessage(){
+ const input=qs("message");
+ const text=input.value.trim();
+ if(!text||!selectedType||sendingMessage)return;
+ const payload={
+   sender:currentUsername,
+   receiver:targetKey(),
+   token:authToken,
+   message:text,
+   reply_to:replyTo?.id||""
+ };
+ sendingMessage=true;
+ qs("sendButton").disabled=true;
+ try{
+   const r=await fetch("/send-message",{method:"POST",body:new URLSearchParams(payload),cache:"no-store"});
+   const d=await r.json();
+   if(!r.ok||!d.success){alert(d.message||"ارسال پیام ناموفق بود");return}
+   if(d.message){
+     const visible=(selectedType==="group"&&d.message.group_id===selectedGroupId)||(selectedType==="user"&&d.message.receiver===selectedUser);
+     if(visible)addMessageObj(d.message,true);
+   }
+   input.value="";
+   cancelReply();
+   refreshUsersDirect();
+ }catch(e){
+   console.error("sendMessage failed",e);
+   alert("ارتباط با سرور برای ارسال پیام برقرار نشد.");
+ }finally{
+   sendingMessage=false;
+   qs("sendButton").disabled=!selectedType;
+   input.focus();
  }
- qs("message").value="";
- cancelReply();
- setTimeout(refreshUsersDirect,300);
 }
+
 function handleEnter(e){if(e.key==="Enter"){e.preventDefault();sendMessage()}}
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 async function deleteMessage(id){if(!confirm("پیام حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);const d=await (await fetch("/delete-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
@@ -386,12 +431,12 @@ async function deleteGroup(){
  try{const d=await (await fetch("/delete-group",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}catch{alert("حذف گروه ناموفق بود")}
 }
 
-function createPeerConnection(other,mode){peerConnection=new RTCPeerConnection(rtcConfig);peerConnection.onicecandidate=e=>{if(e.candidate&&socket?.readyState===1)socket.send(JSON.stringify({action:"ice-candidate",to:other,candidate:e.candidate}))};peerConnection.ontrack=e=>{if(mode==="video"){if(e.streams[0])qs("remoteVideo").srcObject=e.streams[0]}else if(e.streams[0])qs("remoteAudio").srcObject=e.streams[0]};peerConnection.onconnectionstatechange=()=>{if(["failed","closed"].includes(peerConnection?.connectionState))endCall()};return peerConnection}
-async function startCall(mode){if(selectedType!=="user")return alert("تماس فقط با کاربر است.");try{pendingCandidates=[];localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});createPeerConnection(selectedUser,mode);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));if(mode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex"}const offer=await peerConnection.createOffer();await peerConnection.setLocalDescription(offer);socket.send(JSON.stringify({action:"call-offer",to:selectedUser,offer:peerConnection.localDescription,mode}));showHangup()}catch{alert("دسترسی به میکروفون/دوربین ممکن نشد");endCall()}}
-async function acceptCall(){closePopup("incomingPopup");selectedType="user";selectedUser=incomingCaller;const u=usersCache.find(x=>x.username===incomingCaller);if(u)setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":"⚫ آفلاین");try{pendingCandidates=[];localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:incomingMode==="video"});createPeerConnection(incomingCaller,incomingMode);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));if(incomingMode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex"}await peerConnection.setRemoteDescription(incomingOffer);await processPendingCandidates();const ans=await peerConnection.createAnswer();await peerConnection.setLocalDescription(ans);socket.send(JSON.stringify({action:"call-answer",to:incomingCaller,answer:peerConnection.localDescription}));showHangup();incomingCaller="";incomingOffer=null}catch{rejectCall()}}
-function rejectCall(){if(incomingCaller&&socket?.readyState===1)socket.send(JSON.stringify({action:"call-rejected",to:incomingCaller}));closePopup("incomingPopup");incomingCaller="";incomingOffer=null}
+function createPeerConnection(other,mode){peerConnection=new RTCPeerConnection(rtcConfig);peerConnection.onicecandidate=e=>{if(e.candidate)sendWs({action:"ice-candidate",to:other,candidate:e.candidate})};peerConnection.ontrack=e=>{if(mode==="video"){if(e.streams[0])qs("remoteVideo").srcObject=e.streams[0]}else if(e.streams[0])qs("remoteAudio").srcObject=e.streams[0]};peerConnection.onconnectionstatechange=()=>{if(["failed","closed"].includes(peerConnection?.connectionState))endCall()};return peerConnection}
+async function startCall(mode){if(selectedType!=="user")return alert("تماس فقط با کاربر است.");try{pendingCandidates=[];localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});createPeerConnection(selectedUser,mode);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));if(mode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex"}const offer=await peerConnection.createOffer();await peerConnection.setLocalDescription(offer);sendWs({action:"call-offer",to:selectedUser,offer:peerConnection.localDescription,mode});showHangup()}catch{alert("دسترسی به میکروفون/دوربین ممکن نشد");endCall()}}
+async function acceptCall(){closePopup("incomingPopup");selectedType="user";selectedUser=incomingCaller;const u=usersCache.find(x=>x.username===incomingCaller);if(u)setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":"⚫ آفلاین");try{pendingCandidates=[];localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:incomingMode==="video"});createPeerConnection(incomingCaller,incomingMode);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));if(incomingMode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex"}await peerConnection.setRemoteDescription(incomingOffer);await processPendingCandidates();const ans=await peerConnection.createAnswer();await peerConnection.setLocalDescription(ans);sendWs({action:"call-answer",to:incomingCaller,answer:peerConnection.localDescription});showHangup();incomingCaller="";incomingOffer=null}catch{rejectCall()}}
+function rejectCall(){if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller});closePopup("incomingPopup");incomingCaller="";incomingOffer=null}
 function showHangup(){qs("callButton").style.display="none";qs("videoButton").style.display="none";qs("hangupButton").style.display="inline-block"}
-function hangUp(){if(selectedUser&&socket?.readyState===1)socket.send(JSON.stringify({action:"call-ended",to:selectedUser}));endCall()}
+function hangUp(){if(selectedUser)sendWs({action:"call-ended",to:selectedUser});endCall()}
 function endCall(){if(peerConnection){peerConnection.close();peerConnection=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}qs("remoteAudio").srcObject=null;qs("remoteVideo").srcObject=null;qs("localVideo").srcObject=null;qs("videoOverlay").style.display="none";pendingCandidates=[];qs("callButton").style.display="inline-block";qs("videoButton").style.display="inline-block";qs("hangupButton").style.display="none"}
 async function processPendingCandidates(){if(!peerConnection?.remoteDescription)return;for(const c of pendingCandidates){try{await peerConnection.addIceCandidate(c)}catch{}}pendingCandidates=[]}
 function formatDate(s){if(!s)return"";const d=new Date(String(s).replace(" ","T"));return isNaN(d)?String(s):d.toLocaleString("fa-IR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}

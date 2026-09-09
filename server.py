@@ -861,25 +861,25 @@ async def register(username: str = Form(...), password: str = Form(...)):
 def get_recent_chat_users(username):
     """Return direct-chat users ordered by the most recent message.
 
-    Uses DISTINCT ON instead of GROUP BY for the latest conversation row.
-    This avoids PostgreSQL grouping errors with different schema/functional
-    dependency rules while keeping the query fast.
+    Builds the latest message id per conversation in a separate CTE, which
+    avoids PostgreSQL DISTINCT ON / ORDER BY parameter-reference errors and
+    avoids selecting non-grouped columns in the same grouped query.
     """
     with get_db() as connection:
         with connection.cursor() as cursor:
             cursor.execute("""
-                WITH latest AS (
-                    SELECT DISTINCT ON (
-                        CASE WHEN sender=%s THEN receiver ELSE sender END
-                    )
-                        CASE WHEN sender=%s THEN receiver ELSE sender END AS other_user,
-                        id AS last_id
+                WITH direct AS (
+                    SELECT
+                        id,
+                        CASE WHEN sender=%s THEN receiver ELSE sender END AS other_user
                     FROM messages
                     WHERE group_id IS NULL
                       AND (sender=%s OR receiver=%s)
-                    ORDER BY
-                        CASE WHEN sender=%s THEN receiver ELSE sender END,
-                        id DESC
+                ),
+                latest AS (
+                    SELECT other_user, MAX(id) AS last_id
+                    FROM direct
+                    GROUP BY other_user
                 ),
                 unread AS (
                     SELECT sender AS other_user, COUNT(*) AS unread_count
@@ -901,7 +901,7 @@ def get_recent_chat_users(username):
                 LEFT JOIN unread ON unread.other_user = u.username
                 ORDER BY latest.last_id DESC
             """,
-                (username, username, username, username, username, username)
+                (username, username, username, username)
             )
             rows = cursor.fetchall()
 

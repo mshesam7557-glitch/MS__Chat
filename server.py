@@ -1815,11 +1815,25 @@ async def send_message_http(
         msg = await asyncio.to_thread(get_message, mid)
         if not msg:
             return {"success": False, "message": "پیام ذخیره نشد."}
-        await deliver_message(msg)
+
+        # مهم: ذخیره‌سازی پیام از تحویل لحظه‌ای جداست.
+        # در نسخه‌های قبل اگر WebSocket/اعلان/لیست گفتگو خطا می‌داد،
+        # کل درخواست با «ارسال پیام ناموفق بود» برمی‌گشت؛ در حالی که پیام
+        # ممکن بود داخل PostgreSQL ذخیره شده باشد. اینجا بلافاصله موفقیت را
+        # برمی‌گردانیم و تحویل زنده را در پس‌زمینه انجام می‌دهیم.
+        asyncio.create_task(deliver_message_safe(msg))
         return {"success": True, "message": msg}
     except Exception as error:
         print("HTTP text message error:", repr(error))
-        return {"success": False, "message": "ارسال پیام ناموفق بود."}
+        return {"success": False, "message": f"خطا در ذخیره پیام: {type(error).__name__}"}
+
+
+async def deliver_message_safe(msg):
+    """Deliver a saved message without ever breaking the HTTP send request."""
+    try:
+        await deliver_message(msg)
+    except Exception as error:
+        print("Background message delivery error:", repr(error))
 
 
 @app.websocket("/chat/{username}/{token}")

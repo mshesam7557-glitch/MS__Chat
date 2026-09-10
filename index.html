@@ -160,13 +160,28 @@ let peerConnection=null,localStream=null,incomingCaller="",incomingOffer=null,in
 let incomingCallId="",activeCallId="",callTimer=null,rtcConfig={iceServers:[{urls:"stun:stun.cloudflare.com:3478"},{urls:"stun:stun.l.google.com:19302"}]};
 let rtcConfigLoadedAt=0;
 async function loadRtcConfig(force=false){
+ // Calling the Render API here was making calls wait on a slow/blocked request.
+ // For the no-TURN setup, use the known public STUN servers immediately.
+ // Optionally refresh from the server, but NEVER block call setup on it.
  if(!force && Date.now()-rtcConfigLoadedAt<240000)return rtcConfig;
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),1800);
  try{
-   const r=await fetch(`/api/rtc-config?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store'});
-   const d=await r.json();
-   if(d.success&&Array.isArray(d.ice_servers)&&d.ice_servers.length){rtcConfig={iceServers:d.ice_servers};rtcConfigLoadedAt=Date.now()}
- }catch(e){console.warn('RTC config load failed',e)}
+   const r=await fetch(`/api/rtc-config?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store',signal:controller.signal});
+   if(r.ok){
+     const d=await r.json();
+     if(d.success&&Array.isArray(d.ice_servers)&&d.ice_servers.length)rtcConfig={iceServers:d.ice_servers};
+   }
+ }catch(e){console.warn('RTC config unavailable; using built-in STUN:',e?.name||e)}
+ finally{clearTimeout(timer);rtcConfigLoadedAt=Date.now()}
  return rtcConfig;
+}
+function normalizeSessionDescription(desc){
+ if(!desc)return null;
+ const type=typeof desc.type==='string'?desc.type.trim():'';
+ const sdp=typeof desc.sdp==='string'?desc.sdp:'';
+ if(!type||!sdp)return null;
+ return {type,sdp};
 }
 function newCallId(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 function clearCallTimer(){if(callTimer){clearTimeout(callTimer);callTimer=null}}
@@ -367,7 +382,7 @@ async function handleSocket(d){
  }
  if(d.type==="call-answer"){
    if(activeCallId&&d.call_id&&d.call_id!==activeCallId)return;
-   if(peerConnection){try{await peerConnection.setRemoteDescription(d.answer);await processPendingCandidates()}catch(e){console.error('Call answer error',e);alert('برقراری تماس ناموفق بود.')}}
+   if(peerConnection){try{const normalizedAnswer=normalizeSessionDescription(d.answer);if(!normalizedAnswer)throw new Error('Received answer SDP is invalid');await peerConnection.setRemoteDescription(normalizedAnswer);await processPendingCandidates()}catch(e){console.error('Call answer error',e);alert('برقراری تماس ناموفق بود: '+(e?.message||e))}}
    return;
  }
  if(d.type==="ice-candidate"){
@@ -611,7 +626,9 @@ async function startCall(mode){
     qs("chatSub").textContent="📞 در حال تماس...";
     const offer=await peerConnection.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:mode==="video"});
     await peerConnection.setLocalDescription(offer);await waitForIceGathering(peerConnection,10000);
-    sendWs({action:"call-offer",to:selectedUser,offer:peerConnection.localDescription,mode,call_id:activeCallId});
+    const offerDescription=normalizeSessionDescription(peerConnection.localDescription);
+    if(!offerDescription)throw new Error('Offer SDP is empty or invalid');
+    sendWs({action:"call-offer",to:selectedUser,offer:offerDescription,mode,call_id:activeCallId});
     showHangup();clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۳۰ ثانیه برقرار نشد.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();},30000);
   }catch(e){console.error("startCall error",e);alert("شروع تماس ناموفق بود. دسترسی میکروفون/دوربین و اتصال اینترنت را بررسی کن.");endCall();}
 }
@@ -623,10 +640,14 @@ async function acceptCall(){
     await loadRtcConfig(true);localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:incomingMode==="video"});
     createPeerConnection(incomingCaller,incomingMode,thisCallId);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
     if(incomingMode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex";}
-    await peerConnection.setRemoteDescription(incomingOffer);
+    const normalizedOffer=normalizeSessionDescription(incomingOffer);
+    if(!normalizedOffer)throw new Error('Received offer SDP is invalid');
+    await peerConnection.setRemoteDescription(normalizedOffer);
     const ans=await peerConnection.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:incomingMode==="video"});
     await peerConnection.setLocalDescription(ans);await waitForIceGathering(peerConnection,10000);
-    sendWs({action:"call-answer",to:incomingCaller,answer:peerConnection.localDescription,call_id:thisCallId});
+    const answerDescription=normalizeSessionDescription(peerConnection.localDescription);
+    if(!answerDescription)throw new Error('Answer SDP is empty or invalid');
+    sendWs({action:"call-answer",to:incomingCaller,answer:answerDescription,call_id:thisCallId});
     showHangup();incomingCaller="";incomingOffer=null;incomingCallId="";clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس برقرار نشد.");endCall();},30000);
   }catch(e){console.error("acceptCall error",e);alert("پذیرش تماس ناموفق بود: "+(e?.message||e));if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:thisCallId});endCall();}
 }

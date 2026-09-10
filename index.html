@@ -579,7 +579,7 @@ async function deleteGroup(){
 }
 
 function createPeerConnection(other,mode,callId){
-  peerConnection=new RTCPeerConnection(rtcConfig);
+  peerConnection=new RTCPeerConnection({...rtcConfig,iceCandidatePoolSize:4});
   peerConnection.onicecandidate=e=>{
     if(!e.candidate)return;
     console.log("ICE candidate gathered:",e.candidate.type||"unknown",e.candidate.protocol||"");
@@ -633,7 +633,7 @@ async function startCall(mode){
     const offerDescription=normalizeSessionDescription(peerConnection.localDescription);
     if(!offerDescription)throw new Error('Offer SDP is empty or invalid');
     sendWs({action:"call-offer",to:selectedUser,offer:offerDescription,mode,call_id:activeCallId});
-    showHangup();clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۳۰ ثانیه برقرار نشد.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();},30000);
+    showHangup();clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۴۵ ثانیه برقرار نشد.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();},30000);
   }catch(e){console.error("startCall error",e);alert("شروع تماس ناموفق بود. دسترسی میکروفون/دوربین و اتصال اینترنت را بررسی کن.");endCall();}
 }
 async function acceptCall(){
@@ -652,7 +652,7 @@ async function acceptCall(){
     const answerDescription=normalizeSessionDescription(peerConnection.localDescription);
     if(!answerDescription)throw new Error('Answer SDP is empty or invalid');
     sendWs({action:"call-answer",to:incomingCaller,answer:answerDescription,call_id:thisCallId});
-    showHangup();incomingCaller="";incomingOffer=null;incomingCallId="";clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس برقرار نشد.");endCall();},30000);
+    showHangup();incomingCaller="";incomingOffer=null;incomingCallId="";clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۴۵ ثانیه برقرار نشد.");endCall();},30000);
   }catch(e){console.error("acceptCall error",e);alert("پذیرش تماس ناموفق بود: "+(e?.message||e));if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:thisCallId});endCall();}
 }
 function rejectCall(){const cid=incomingCallId||activeCallId;if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:cid});closePopup("incomingPopup");incomingCaller="";incomingOffer=null;incomingCallId="";activeCallId="";}

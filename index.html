@@ -130,7 +130,21 @@ button,input{font:inherit}button{cursor:pointer}
 <div id="groupMembersPopup" class="popup"><div class="popupCard">
 <h3 id="groupMembersTitle">👥 اعضای گروه</h3>
 <div id="groupMembersList" class="membersList"></div>
+<div id="groupMembersActions" class="row" style="margin-top:10px">
+<button id="addGroupMembersButton" onclick="openAddGroupMembersPopup()" style="display:none">➕ افزودن اعضا</button>
 <button onclick="closePopup('groupMembersPopup')">بستن</button>
+</div>
+</div></div>
+
+<div id="addGroupMembersPopup" class="popup"><div class="popupCard">
+<h3 id="addGroupMembersTitle">➕ افزودن اعضا</h3>
+<input id="addGroupMemberSearch" placeholder="جستجوی کاربر..." oninput="loadAddGroupMemberCandidates()">
+<div id="addGroupMembersList" class="membersList"></div>
+<div class="row" style="margin-top:10px">
+<button id="confirmAddGroupMembersButton" onclick="addGroupMembers()">افزودن</button>
+<button onclick="closePopup('addGroupMembersPopup')">بستن</button>
+</div>
+<p id="addGroupMembersMessage"></p>
 </div></div>
 
 <div id="adminPopup" class="popup"><div class="popupCard"><h3>👑 مدیریت کاربران</h3><div id="adminUsers"></div><button onclick="closePopup('adminPopup')">بستن</button><p id="adminMessage"></p></div></div>
@@ -325,11 +339,17 @@ function startUsersRefresh(){
 }
 function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket();syncPushState()}
 
+function updateSelectedPeerHeader(){
+ if(selectedType!=="user"||!selectedUser)return;
+ const u=userMap.get(selectedUser)||usersCache.find(x=>x.username===selectedUser);
+ if(!u)return;
+ setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");
+}
 function updateConnectionUI(connected){
   const el=qs("chatSub");
   if(!el) return;
   if(selectedType){
-    const u=selectedType==="user"?userMap.get(selectedUser):null;
+    const u=selectedType==="user"?(userMap.get(selectedUser)||usersCache.find(x=>x.username===selectedUser)):null;
     if(!connected){el.textContent="⚠️ در حال اتصال به سرور...";}
     else if(u){el.textContent=u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین";}
   }
@@ -373,8 +393,8 @@ function sendWs(payload){
 }
 
 async function handleSocket(d){
- if(d.type==="users"||d.type==="presence"){const presence=new Map((d.users||[]).map(u=>[u.username,u]));if(d.type==="presence"){usersCache=usersCache.map(u=>presence.has(u.username)?{...u,online:presence.get(u.username).online,last_seen:presence.get(u.username).last_seen,avatar:presence.get(u.username).avatar,display_name:presence.get(u.username).display_name}:u);renderUsers();syncCallButtons()}userMap=presence;syncCallButtons();return}
- if(d.type==="recent-users"){usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();syncCallButtons();return}
+ if(d.type==="users"||d.type==="presence"){const presence=new Map((d.users||[]).map(u=>[u.username,u]));if(d.type==="presence"){usersCache=usersCache.map(u=>presence.has(u.username)?{...u,online:presence.get(u.username).online,last_seen:presence.get(u.username).last_seen,avatar:presence.get(u.username).avatar,display_name:presence.get(u.username).display_name}:u);renderUsers();}userMap=presence;updateSelectedPeerHeader();syncCallButtons();return}
+ if(d.type==="recent-users"){usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();updateSelectedPeerHeader();syncCallButtons();return}
  if(d.type==="unread"){unreadState=d.unread||unreadState;renderUsers();renderGroups();return}
  if(d.type==="typing"){
    const from=d.from||"";
@@ -386,7 +406,7 @@ async function handleSocket(d){
      indicator.textContent=`${person?.display_name||from} در حال تایپ کردن است...`;
      indicator.classList.add("show");
      clearTimeout(typingIndicatorTimer);
-     typingIndicatorTimer=setTimeout(()=>indicator.classList.remove("show"),2200);
+     typingIndicatorTimer=setTimeout(()=>indicator.classList.remove("show"),3800);
    }else{
      clearTimeout(typingIndicatorTimer);
      indicator.classList.remove("show");
@@ -397,12 +417,18 @@ async function handleSocket(d){
  if(d.type==="group-created"){if(!groupsCache.some(g=>g.id===d.group.id)){groupsCache.unshift(d.group);groupMap.set(String(d.group.id),d.group)}renderGroups();return}
  if(d.type==="history"){showHistory(d.messages||[]);return}
  if(d.type==="group-history"){showHistory(d.messages||[]);return}
- if(d.type==="group-info"){selectedGroup=d.group;return}
+ if(d.type==="group-info"){
+   selectedGroup=d.group;
+   const idx=groupsCache.findIndex(g=>String(g.id)===String(d.group.id));
+   if(idx>=0){groupsCache[idx]={...groupsCache[idx],...d.group};groupMap.set(String(d.group.id),groupsCache[idx]);renderGroups();}
+   if(selectedType==="group"&&String(selectedGroupId)===String(d.group.id)){setHeader(d.group.name,d.group.avatar,groupAvatarUrl(d.group.id),"👥 "+(d.group.members_count||0)+" عضو");qs("addGroupMembersButton").style.display=d.group.owner===currentUsername?"inline-block":"none";}
+   return
+ }
  if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
  if(d.type==="message"){
    const m=d.message;
    if((selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.sender===selectedUser)){
-     addMessageObj(m,false);
+     addMessageObj(m,false,true);
      if(selectedType==="user")markMessagesRead(m.sender);
      else if(selectedType==="group")sendWs({action:"mark-group-read",group_id:m.group_id});
    }else{
@@ -510,8 +536,9 @@ function showHistory(messages){
 function addMessageObj(m,mine,forceScroll=false){
  const key=String(m.id),old=messageMap.get(key);
  if(old){messageDataMap.set(key,m);renderMessageElement(old,m,mine);if(forceScroll)scrollBottom();return}
+ const wasNearBottom=isNearBottom();
  const el=document.createElement("div");el.className=`message ${mine?"mine":"theirs"}`;el.dataset.id=m.id;messageMap.set(key,el);messageDataMap.set(key,m);renderMessageElement(el,m,mine);qs("messages").appendChild(el);
- if(forceScroll||!isNearBottom())scrollBottom();
+ if(forceScroll||wasNearBottom)requestAnimationFrame(scrollBottom);
 }
 function renderMessageElement(el,m,mine){
  el.innerHTML="";const head=document.createElement("div");head.className="messageHeader";head.textContent=mine?"من":(userMap.get(m.sender)?.display_name||m.sender);el.appendChild(head)
@@ -552,22 +579,30 @@ function startReply(m){
  qs("message").focus();
 }
 function cancelReply(){replyTo=null;qs("replyBar").style.display="none";qs("replyText").textContent=""}
-function sendTypingState(isTyping){
+let typingPulseTimer=null;
+function sendTypingState(isTyping,force=false){
  if(!selectedType)return;
- if(isTyping===typingActive&&!isTyping)return;
+ if(isTyping===typingActive&&!force)return;
  typingActive=isTyping;
  if(selectedType==="user"&&selectedUser){sendWs({action:"typing",to:selectedUser,is_typing:isTyping});}
  else if(selectedType==="group"&&selectedGroupId){sendWs({action:"typing",group_id:selectedGroupId,is_typing:isTyping});}
 }
 function handleTypingInput(){
  clearTimeout(typingTimer);
+ clearTimeout(typingPulseTimer);
  const text=qs("message").value;
- if(!selectedType||!text.trim()){if(typingActive)sendTypingState(false);return;}
- if(!typingActive)sendTypingState(true);
- typingTimer=setTimeout(()=>sendTypingState(false),1500);
+ if(!selectedType||!text.length){if(typingActive)sendTypingState(false);return;}
+ // اولین کاراکتر بلافاصله وضعیت «در حال تایپ» را می‌فرستد؛ حتی اگر فقط یک حرف باشد.
+ if(!typingActive)sendTypingState(true,true);
+ // در تایپ طولانی، هر چند صد میلی‌ثانیه یک pulse می‌فرستیم تا گوشی/مرورگر همچنان typing را زنده نگه دارد.
+ typingPulseTimer=setTimeout(()=>{
+   if(qs("message").value.length>0&&selectedType)sendTypingState(true,true);
+ },650);
+ typingTimer=setTimeout(()=>sendTypingState(false),3000);
 }
 function stopTyping(){
  clearTimeout(typingTimer);typingTimer=null;
+ clearTimeout(typingPulseTimer);typingPulseTimer=null;
  if(typingActive)sendTypingState(false);
 }
 
@@ -651,7 +686,68 @@ function openChangePassword(){openPopup("passwordPopup")}async function changePa
 
 async function openGroupPopup(){openPopup("groupPopup");qs("groupMessage").textContent="";qs("groupName").value="";qs("groupMemberSearch").value="";await loadGroupMemberCandidates()}
 async function loadGroupMemberCandidates(){const q=qs("groupMemberSearch").value.trim();try{const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(q)}`)).json();const div=qs("members"),picked=new Set([...div.querySelectorAll('input:checked')].map(x=>x.value));div.innerHTML="";(d.users||[]).filter(u=>u.username!==currentUsername).forEach(u=>{const label=document.createElement("label");label.className="memberPick";label.innerHTML=`<input type="checkbox" value="${escapeHtml(u.username)}" ${picked.has(u.username)?"checked":""}> ${escapeHtml(u.display_name)}`;div.appendChild(label)})}catch(e){console.warn(e)}}
-function showGroupMembers(){if(!selectedGroup)return;const list=qs("groupMembersList");qs("groupMembersTitle").textContent="👥 اعضای "+selectedGroup.name;list.innerHTML="";(selectedGroup.members||[]).forEach(m=>{const row=document.createElement("div");row.className="memberRow";const av=document.createElement("img");av.className="avatar small";av.loading="lazy";av.decoding="async";setAvatar(av,m.avatar,m.display_name,userAvatarUrl(m.username));const meta=document.createElement("div");meta.className="memberMeta";const b=document.createElement("b");b.textContent=m.display_name;const s=document.createElement("small");s.textContent=m.username+(m.username===selectedGroup.owner?" • سازنده":"");meta.append(b,s);row.append(av,meta);list.appendChild(row)});openPopup("groupMembersPopup")}
+function showGroupMembers(){
+ if(!selectedGroup)return;
+ const list=qs("groupMembersList");
+ qs("groupMembersTitle").textContent="👥 اعضای "+selectedGroup.name;
+ list.innerHTML="";
+ (selectedGroup.members||[]).forEach(m=>{
+   const row=document.createElement("div");row.className="memberRow";
+   const av=document.createElement("img");av.className="avatar small";av.loading="lazy";av.decoding="async";setAvatar(av,m.avatar,m.display_name,userAvatarUrl(m.username));
+   const meta=document.createElement("div");meta.className="memberMeta";
+   const b=document.createElement("b");b.textContent=m.display_name;
+   const s=document.createElement("small");s.textContent=m.username+(m.username===selectedGroup.owner?" • سازنده":"");
+   meta.append(b,s);row.append(av,meta);list.appendChild(row);
+ });
+ qs("addGroupMembersButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";
+ openPopup("groupMembersPopup");
+}
+
+async function openAddGroupMembersPopup(){
+ if(!selectedGroup||selectedGroup.owner!==currentUsername)return;
+ qs("addGroupMemberSearch").value="";
+ qs("addGroupMembersMessage").textContent="";
+ await loadAddGroupMemberCandidates();
+ openPopup("addGroupMembersPopup");
+}
+async function loadAddGroupMemberCandidates(){
+ if(!selectedGroup)return;
+ const q=qs("addGroupMemberSearch").value.trim();
+ const box=qs("addGroupMembersList");
+ try{
+   const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(q)}`,{cache:"no-store"})).json();
+   box.innerHTML="";
+   const existing=new Set((selectedGroup.members||[]).map(m=>m.username));
+   (d.users||[]).filter(u=>u.username!==currentUsername&&!existing.has(u.username)).forEach(u=>{
+     const label=document.createElement("label");label.className="memberPick";
+     label.innerHTML=`<input type="checkbox" value="${escapeHtml(u.username)}"> ${escapeHtml(u.display_name)} <span class="muted">(${escapeHtml(u.username)})</span>`;
+     box.appendChild(label);
+   });
+   if(!box.children.length)box.innerHTML='<div class="muted">کاربر جدیدی برای افزودن پیدا نشد.</div>';
+ }catch(e){console.warn(e);box.innerHTML='<div class="muted">جستجوی کاربران ناموفق بود.</div>'}
+}
+async function addGroupMembers(){
+ if(!selectedGroup||selectedGroup.owner!==currentUsername)return;
+ const picks=[...qs("addGroupMembersList").querySelectorAll("input:checked")].map(x=>x.value);
+ const msg=qs("addGroupMembersMessage");
+ if(!picks.length){msg.textContent="حداقل یک کاربر را انتخاب کن.";return;}
+ const button=qs("confirmAddGroupMembersButton");
+ button.disabled=true;msg.textContent="در حال افزودن...";
+ const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("group_id",selectedGroup.id);fd.append("members",picks.join(","));
+ try{
+   const r=await fetch("/add-group-members",{method:"POST",body:fd,cache:"no-store"});
+   const d=await r.json();
+   if(!r.ok||!d.success)throw new Error(d.message||"افزودن اعضا ناموفق بود.");
+   selectedGroup=d.group;
+   const idx=groupsCache.findIndex(g=>String(g.id)===String(d.group.id));
+   if(idx>=0)groupsCache[idx]={...groupsCache[idx],...d.group};
+   groupMap.set(String(d.group.id),d.group);
+   renderGroups();
+   closePopup("addGroupMembersPopup");
+   showGroupMembers();
+ }catch(e){console.error(e);msg.textContent=e.message||"افزودن اعضا ناموفق بود."}
+ finally{button.disabled=false;}
+}
 
 async function createGroup(){
  if(creatingGroup)return;

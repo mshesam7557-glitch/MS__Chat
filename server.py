@@ -1798,6 +1798,86 @@ async def create_group(
     return {"success": True, "group": info}
 
 
+@app.post("/add-group-members")
+async def add_group_members(
+    username: str = Form(...),
+    token: str = Form(...),
+    group_id: int = Form(...),
+    members: str = Form(""),
+):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+
+    try:
+        requested = [x.strip() for x in (members or "").split(",") if x.strip()]
+        requested = list(dict.fromkeys(requested))
+        if not requested:
+            return {"success": False, "message": "حداقل یک کاربر را انتخاب کنید."}
+
+        # Only the group owner can add members.
+        with get_db() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, name, owner FROM groups WHERE id=%s", (group_id,))
+                group = cursor.fetchone()
+                if not group:
+                    return {"success": False, "message": "گروه پیدا نشد."}
+                if group["owner"] != username:
+                    return {"success": False, "message": "فقط سازنده گروه می‌تواند عضو جدید اضافه کند."}
+
+                cursor.execute(
+                    "SELECT username FROM group_members WHERE group_id=%s",
+                    (group_id,),
+                )
+                existing = {r["username"] for r in cursor.fetchall()}
+
+                valid = []
+                for member in requested:
+                    if member == username or member in existing:
+                        continue
+                    cursor.execute("SELECT 1 FROM users WHERE username=%s", (member,))
+                    if cursor.fetchone():
+                        valid.append(member)
+
+                if not valid:
+                    # Not an error: the selected users may already be members.
+                    info = await asyncio.to_thread(get_group_info, group_id)
+                    return {"success": True, "group": info, "added": []}
+
+                for member in valid:
+                    cursor.execute(
+                        "INSERT INTO group_members (group_id, username) VALUES (%s,%s) ON CONFLICT DO NOTHING",
+                        (group_id, member),
+                    )
+            connection.commit()
+
+        _group_info_cache.pop(group_id, None)
+        invalidate_membership_cache(group_id)
+        info = await asyncio.to_thread(get_group_info, group_id)
+        if not info:
+            return {"success": False, "message": "اطلاعات گروه پیدا نشد."}
+
+        # Refresh the group for every member. New members receive group-created;
+        # existing members also receive an updated groups list so the count changes immediately.
+        all_members = [m["username"] for m in info.get("members", [])]
+        await asyncio.gather(*[
+            send_to(member, {"type": "group-created", "group": info})
+            for member in all_members
+        ], return_exceptions=True)
+        await asyncio.gather(*[
+            send_to(member, {"type": "group-info", "group": info})
+            for member in all_members
+        ], return_exceptions=True)
+        await asyncio.gather(*[
+            send_to(member, {"type": "groups", "groups": await asyncio.to_thread(get_user_groups, member)})
+            for member in all_members
+        ], return_exceptions=True)
+
+        return {"success": True, "group": info, "added": valid}
+    except Exception as error:
+        print("Add group members error:", repr(error))
+        return {"success": False, "message": f"خطا در افزودن اعضا: {type(error).__name__}"}
+
+
 @app.post("/delete-group")
 async def delete_group(
     username: str = Form(...),

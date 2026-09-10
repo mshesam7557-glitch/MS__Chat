@@ -55,7 +55,7 @@ button,input{font:inherit}button{cursor:pointer}
 #videoOverlay{display:none;position:fixed;inset:0;background:rgba(3,7,22,.85);z-index:3000;align-items:center;justify-content:center}.videoCard{position:relative;width:min(950px,95vw);height:min(720px,90vh);background:#081023;border-radius:18px;overflow:hidden}.remoteVideo{width:100%;height:100%;object-fit:contain;background:#000}.localVideo{position:absolute;right:15px;bottom:15px;width:180px;height:130px;object-fit:cover;border-radius:12px;border:2px solid #fff}.videoControls{position:absolute;left:0;right:0;bottom:12px;text-align:center}.videoControls button{padding:10px 15px;border:0;border-radius:10px;background:#ffdede}
 #imageViewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:3500;align-items:center;justify-content:center;padding:20px}.fullImage{max-width:95vw;max-height:95vh;border-radius:10px}.membersList{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}.memberRow{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;background:#f4f5fb}.memberMeta{flex:1}.memberMeta small{display:block;opacity:.65}
 @media(max-width:760px){#chat{width:calc(100% - 10px);height:calc(100vh - 20px);min-height:0;margin:10px auto;border-radius:16px}#sidebar{width:35%;min-width:125px;padding:8px}#chatArea{width:65%}.sideBtn{font-size:11px}.message{max-width:88%;font-size:13px}.callBtn{padding:7px 8px;font-size:10px}.avatar{width:34px;height:34px;font-size:16px}.itemName{font-size:12px}.itemStatus{font-size:9px}#chatHeader{min-height:60px;padding:7px 9px}.chatTitle{font-size:13px}#sendArea{padding:7px}#sendArea button{padding:9px}.localVideo{width:120px;height:90px}}
-</style>
+ .successMessage{color:#0a8f3d !important;font-weight:bold;}</style>
 </head>
 <body>
 <div id="login">
@@ -75,7 +75,7 @@ button,input{font:inherit}button{cursor:pointer}
 <button class="sideBtn" onclick="openProfile()">👤 پروفایل</button>
 <button class="sideBtn" onclick="openChangePassword()">🔐 تغییر رمز</button>
 <button class="sideBtn" onclick="openGroupPopup()">👥 ساخت گروه</button>
-<button class="sideBtn" onclick="enablePushNotifications()">🔔 فعال‌کردن اعلان</button>
+<button class="sideBtn" id="pushButton" onclick="togglePushNotifications()">🔔 فعال‌کردن اعلان موبایل</button>
 <button class="sideBtn hidden" id="adminButton" onclick="openAdminPopup()">👑 مدیریت کاربران</button>
 <button class="sideBtn" onclick="logout()">🚪 خروج</button>
 <hr>
@@ -89,10 +89,10 @@ button,input{font:inherit}button{cursor:pointer}
 <main id="chatArea">
 <header id="chatHeader">
 <div id="chatAvatar">👤</div>
-<div class="chatTitleWrap"><div id="chatTitle" class="chatTitle">یک نفر را انتخاب کن 👈</div><div id="chatSub" class="chatSub"></div></div>
+<div class="chatTitleWrap"><div id="chatTitle" class="chatTitle">برای شروع، یک کاربر را از لیست انتخاب کن 👈</div><div id="chatSub" class="chatSub"></div></div>
 <button id="callButton" class="callBtn" onclick="startCall('audio')" disabled>📞</button>
 <button id="videoButton" class="callBtn videoBtn" onclick="startCall('video')" disabled>📹</button>
-<button id="membersButton" class="callBtn" onclick="showGroupMembers()" style="display:none">👥</button><button id="deleteGroupButton" class="callBtn danger" onclick="deleteGroup()" style="display:none">🗑️</button>
+<button id="membersButton" class="callBtn" onclick="showGroupMembers()" style="display:none">👥</button><button id="deleteGroupButton" class="callBtn danger" onclick="deleteGroup()" style="display:none">🗑️</button><button id="deleteConversationButton" class="callBtn danger" onclick="deleteConversation()" style="display:none" title="حذف گفتگو">🗑️</button>
 <button id="hangupButton" class="callBtn hangBtn" onclick="hangUp()">❌</button>
 </header>
 <section id="messages"></section>
@@ -207,24 +207,29 @@ async function requestNotifications(){
  return "unsupported";
 }
 function setPushButtonState(enabled){
- const buttons=[...document.querySelectorAll('button')].filter(b=>b.textContent.includes('اعلان'));
- buttons.forEach(b=>b.textContent=enabled?'✅ اعلان موبایل فعال است':'🔔 فعال‌کردن اعلان موبایل');
+ const b=qs("pushButton");
+ if(!b)return;
+ b.textContent=enabled?'✅ خاموش‌کردن اعلان موبایل':'🔔 فعال‌کردن اعلان موبایل';
+ b.title=enabled?'خاموش‌کردن اعلان موبایل':'فعال‌کردن اعلان موبایل';
 }
 async function syncPushState(){
  try{
-   if(!('serviceWorker' in navigator)||!('PushManager' in window))return;
+   if(!('serviceWorker' in navigator)||!('PushManager' in window)){setPushButtonState(false);return;}
    const reg=await navigator.serviceWorker.register('/sw.js');
    const sub=await reg.pushManager.getSubscription();
    pushEnabled=!!sub;
    setPushButtonState(pushEnabled);
- }catch(e){console.warn('Push state sync failed',e)}
+ }catch(e){console.warn('Push state sync failed',e);setPushButtonState(false)}
+}
+async function togglePushNotifications(){
+  if(pushEnabled) return disablePushNotifications();
+  return enablePushNotifications();
 }
 async function enablePushNotifications(){
   try{
     if(!('serviceWorker' in navigator)||!('PushManager' in window)){return alert('مرورگر این دستگاه اعلان Push را پشتیبانی نمی‌کند.');}
     const pk=await (await fetch('/api/push-public-key',{cache:'no-store'})).json();
     if(!pk.success||!pk.public_key){return alert('کلید اعلان روی سرور تنظیم نشده است.');}
-    // Must happen directly from this button click for modern browsers.
     const perm=await Notification.requestPermission();
     if(perm!=='granted')return alert('اجازه اعلان داده نشد.');
     await navigator.serviceWorker.register('/sw.js');
@@ -238,18 +243,43 @@ async function enablePushNotifications(){
     if(!d.success)return alert(d.message||'فعال‌سازی اعلان ناموفق بود.');
     pushEnabled=true;
     setPushButtonState(true);
-    const ios=/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    alert(ios ? '✅ اعلان فعال شد. در آیفون/آیپد، سایت را از Share → Add to Home Screen باز کن تا اعلان‌ها مثل اپ روی گوشی نمایش داده شوند.' : '✅ اعلان موبایل فعال شد.');
+    alert('✅ اعلان موبایل فعال شد. هر وقت خواستی می‌توانی همین دکمه را دوباره بزنی و خاموشش کنی.');
   }catch(e){console.error('Push enable error',e);alert('فعال‌سازی اعلان ناموفق بود.');}
+}
+async function disablePushNotifications(){
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription();
+    const endpoint=sub?.endpoint||'';
+    if(sub)await sub.unsubscribe();
+    if(endpoint){
+      const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('endpoint',endpoint);
+      await fetch('/api/push-unsubscribe',{method:'POST',body:fd,cache:'no-store'});
+    }
+    pushEnabled=false;
+    setPushButtonState(false);
+    alert('🔕 اعلان موبایل خاموش شد.');
+  }catch(e){console.error('Push disable error',e);alert('خاموش‌کردن اعلان ناموفق بود.');}
 }
 function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4);const raw=atob((base64String+padding).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 
-function switchAuthMode(){isRegisterMode=!isRegisterMode;qs("authTitle").textContent=isRegisterMode?"ساخت حساب جدید":"ورود به حساب";document.querySelector("#login>button").textContent=isRegisterMode?"ثبت‌نام":"ورود";qs("switchMode").textContent=isRegisterMode?"حساب دارم؛ وارد شوم":"حساب ندارم؛ ثبت‌نام کنم";qs("password").autocomplete=isRegisterMode?"new-password":"current-password";qs("loginMessage").textContent=""}
+function switchAuthMode(){isRegisterMode=!isRegisterMode;qs("authTitle").textContent=isRegisterMode?"ساخت حساب جدید":"ورود به حساب";document.querySelector("#login>button").textContent=isRegisterMode?"ثبت‌نام":"ورود";qs("switchMode").textContent=isRegisterMode?"حساب دارم؛ وارد شوم":"حساب ندارم؛ ثبت‌نام کنم";qs("password").autocomplete=isRegisterMode?"new-password":"current-password";qs("loginMessage").textContent="";qs("loginMessage").classList.remove("successMessage")}
 async function authAction(){
  const username=qs("username").value.trim(),password=qs("password").value, msg=qs("loginMessage");if(!username||!password){msg.textContent="نام کاربری و رمز عبور را وارد کن.";return}
  const fd=new FormData();fd.append("username",username);fd.append("password",password);
  try{const r=await fetch(isRegisterMode?"/register":"/login",{method:"POST",body:fd}),d=await r.json();if(!d.success){msg.textContent=d.message;return}
- if(isRegisterMode){msg.textContent="✅ حساب ساخته شد. حالا وارد شو.";isRegisterMode=false;switchAuthMode();qs("username").value=username;return}
+ if(isRegisterMode){
+   isRegisterMode=false;
+   qs("authTitle").textContent="ورود به حساب";
+   document.querySelector("#login>button").textContent="ورود";
+   qs("switchMode").textContent="حساب ندارم؛ ثبت‌نام کنم";
+   qs("password").autocomplete="current-password";
+   qs("password").value="";
+   msg.textContent="✅ حساب شما با موفقیت ساخته شد. حالا می‌توانید با همین نام کاربری وارد شوید.";
+   msg.classList.add("successMessage");
+   qs("username").value=username;
+   return;
+ }
  currentUsername=d.username;currentDisplayName=d.display_name;currentAvatar=d.avatar||"";authToken=d.token;openChat();syncPushState()
  }catch{msg.textContent="ارتباط با سرور برقرار نشد."}
 }
@@ -350,17 +380,19 @@ async function handleSocket(d){
  if(d.type==="history"){showHistory(d.messages||[]);return}
  if(d.type==="group-history"){showHistory(d.messages||[]);return}
  if(d.type==="group-info"){selectedGroup=d.group;return}
- if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("یک نفر را انتخاب کن 👈","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
+ if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
  if(d.type==="message"){
    const m=d.message;
    if((selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.sender===selectedUser)){
      addMessageObj(m,false);
      if(selectedType==="user")markMessagesRead(m.sender);
+     else if(selectedType==="group")sendWs({action:"mark-group-read",group_id:m.group_id});
    }else{
      markNew(d.message.group_id?`group:${d.message.group_id}`:d.message.sender);
    }
    if(!m.group_id) scheduleRecentUsersRefresh();
-   notify(d.message.group_id?(groupsCache.find(g=>g.id===d.message.group_id)?.name||"گروه"):d.message.sender,d.message.message||"📎 فایل جدید"); return
+   const senderLabel=d.message.group_id?(`${groupsCache.find(g=>g.id===d.message.group_id)?.name||"گروه"} • ${userMap.get(d.message.sender)?.display_name||d.message.sender}`):(userMap.get(d.message.sender)?.display_name||d.message.sender);
+   notify(senderLabel,d.message.message||"📎 فایل جدید"); return
  }
  if(d.type==="sent"){
    if(d.message){
@@ -405,7 +437,12 @@ function renderGroups(){
   const av=document.createElement("img"); av.className="avatar small"; av.loading="lazy"; av.decoding="async"; setAvatar(av,g.avatar,g.name,groupAvatarUrl(g.id));
   const t=document.createElement("div"); t.className="itemText"; const n=document.createElement("div"); n.className="itemName"; n.textContent=g.name;
   const st=document.createElement("div"); st.className="itemStatus"; st.textContent="👥 "+(g.members_count||0)+" عضو"; t.append(n,st);
-  b.append(av,t); b.onclick=()=>selectGroup(g); frag.appendChild(b); groupButtonMap.set(String(g.id),b);
+  b.append(av,t);
+  const count=Number(unreadState.groups[String(g.id)]||0);
+  if(count){const badge=document.createElement("span");badge.className="badge";badge.textContent=count>99?"99+":count;b.appendChild(badge)}
+  if(newSet.has(`group:${g.id}`))b.classList.add("new");
+  b.onclick=()=>{newSet.delete(`group:${g.id}`);selectGroup(g)};
+  frag.appendChild(b); groupButtonMap.set(String(g.id),b);
  }
  div.appendChild(frag);
 }
@@ -439,8 +476,8 @@ async function markDirectRead(sender){
  const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("sender",sender);
  try{await fetch("/api/mark-read",{method:"POST",body:fd,cache:"no-store"})}catch(e){console.warn("mark read failed",e)}
 }
-function selectUser(u){selectedType="user";selectedUser=u.username;unreadState.direct[u.username]=0;u.unread_count=0;renderUsers();selectedGroupId=null;selectedGroup=null;qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);syncCallButtons();qs("messages").innerHTML="";cancelReply();markDirectRead(u.username);loadDirectHistory(u.username)}
-function selectGroup(g){selectedType="group";unreadState.groups[String(g.id)]=0;renderGroups();selectedUser="";sendWs({action:"mark-group-read",group_id:g.id});selectedGroupId=g.id;selectedGroup=g;setHeader(g.name,g.avatar,groupAvatarUrl(g.id),"👥 "+(g.members_count||0)+" عضو");enableComposer(true);qs("membersButton").style.display="inline-block";qs("deleteGroupButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";qs("messages").innerHTML="";cancelReply();sendWs({action:"group-history",group_id:g.id});setTimeout(()=>sendWs({action:"group-info",group_id:g.id}),0);}
+function selectUser(u){selectedType="user";selectedUser=u.username;unreadState.direct[u.username]=0;u.unread_count=0;renderUsers();selectedGroupId=null;selectedGroup=null;qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";qs("deleteConversationButton").style.display="inline-block";setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);syncCallButtons();qs("messages").innerHTML="";cancelReply();markDirectRead(u.username);loadDirectHistory(u.username)}
+function selectGroup(g){selectedType="group";unreadState.groups[String(g.id)]=0;renderGroups();selectedUser="";qs("deleteConversationButton").style.display="none";sendWs({action:"mark-group-read",group_id:g.id});selectedGroupId=g.id;selectedGroup=g;setHeader(g.name,g.avatar,groupAvatarUrl(g.id),"👥 "+(g.members_count||0)+" عضو");enableComposer(true);qs("membersButton").style.display="inline-block";qs("deleteGroupButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";qs("messages").innerHTML="";cancelReply();sendWs({action:"group-history",group_id:g.id});setTimeout(()=>sendWs({action:"group-info",group_id:g.id}),0);}
 function setHeader(name,avatar,avatarFallback,sub){qs("chatTitle").textContent=name;qs("chatSub").textContent=sub||"";setAvatar(qs("chatAvatar"),avatar,name,avatarFallback)}
 function enableComposer(v){["message","sendButton","recordButton","imageButton","callButton","videoButton"].forEach(id=>qs(id).disabled=!v);qs("hangupButton").style.display="none"}
 function isNearBottom(){const b=qs("messages");return b.scrollHeight-b.scrollTop-b.clientHeight<140}
@@ -523,6 +560,24 @@ async function sendMessage(){
 }
 
 function handleEnter(e){if(e.key==="Enter"){e.preventDefault();sendMessage()}}
+async function deleteConversation(){
+ if(selectedType!=="user"||!selectedUser)return;
+ const target=selectedUser;
+ const name=selectedName();
+ if(!confirm(`گفتگوی «${name}» از چت‌های اخیر شما حذف شود؟\n\nپیام‌ها حذف نمی‌شوند و اگر دوباره پیام بفرستی/بگیری، گفتگو دوباره ظاهر می‌شود.`))return;
+ const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("other_username",target);
+ try{
+  const r=await fetch("/api/delete-conversation",{method:"POST",body:fd,cache:"no-store"});
+  const d=await r.json();
+  if(!r.ok||!d.success)throw new Error(d.message||"حذف گفتگو ناموفق بود.");
+  usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();
+  selectedType="";selectedUser="";selectedGroupId=null;selectedGroup=null;
+  qs("messages").innerHTML="";cancelReply();enableComposer(false);
+  qs("deleteConversationButton").style.display="none";
+  qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";
+  setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","");
+ }catch(e){console.error(e);alert(e.message||"حذف گفتگو ناموفق بود.")}
+}
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 async function deleteMessage(id){if(!confirm("پیام حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);const d=await (await fetch("/delete-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 

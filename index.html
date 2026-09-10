@@ -12,6 +12,7 @@
 <link rel="apple-touch-icon" href="/background.png">
 <title>MS Chat</title>
 <style>
+@import url("https://fonts.googleapis.com/css2?family=Lalezar&display=swap");
 *{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Arial,Tahoma,sans-serif}
 body{min-height:100vh;background:linear-gradient(rgba(6,14,50,.28),rgba(18,8,60,.3)),url("background.png") center/cover;color:#111}
 button,input{font:inherit}button{cursor:pointer}
@@ -38,6 +39,7 @@ button,input{font:inherit}button{cursor:pointer}
 .callBtn{border:0;border-radius:10px;padding:9px 11px;background:#daf7df}.videoBtn{background:#dce8ff}.hangBtn{display:none;background:#ffdede}
 #messages{flex:1;min-height:0;padding:18px;overflow:auto;background:rgba(247,249,255,.12);contain:strict;overscroll-behavior:contain}
 .message{max-width:min(76%,700px);width:fit-content;padding:9px 11px;margin:8px 0;border-radius:14px;clear:both;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative;content-visibility:auto;contain-intrinsic-size:90px}
+.messageText,.replyQuote,.messageHeader{font-family:"Lalezar",Tahoma,sans-serif}.stickerMessage{font-size:58px;line-height:1.05;min-width:86px;text-align:center;padding:12px 14px;background:transparent!important;box-shadow:none!important;border:0!important}.stickerPanel{display:none;position:absolute;right:0;bottom:64px;width:min(360px,calc(100vw - 24px));max-height:300px;overflow:auto;padding:10px;background:rgba(255,255,255,.98);border:1px solid #ddd;border-radius:16px;box-shadow:0 12px 30px rgba(0,0,0,.18);z-index:1200}.stickerPanel.show{display:block}.stickerGrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}.stickerBtn{border:0;border-radius:12px;background:#f3f5ff;font-size:34px;padding:8px;line-height:1;min-height:58px}.stickerBtn:hover{background:#e8ecff}.groupReadHint{font-size:10px;opacity:.65;cursor:pointer}.groupReadHint:hover{opacity:1}.readersGrid{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow:auto}.readerRow{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:#f4f5fb}.readerMeta{flex:1}.readerMeta small{display:block;opacity:.6}
 .mine{margin-left:auto;background:#d8ffd2;border-bottom-right-radius:5px}.theirs{margin-right:auto;background:rgba(255,255,255,.95);border:1px solid rgba(0,0,0,.06);border-bottom-left-radius:5px}
 .messageText{white-space:pre-wrap;overflow-wrap:anywhere}.messageHeader{font-size:11px;opacity:.7;margin-bottom:4px}.msgImage{max-width:330px;max-height:330px;border-radius:10px;display:block;cursor:pointer}.audioMessage{width:min(300px,100%);margin-top:5px}.downloadAudio{display:inline-block;margin-top:6px;font-size:12px;text-decoration:none}
 .messageFooter{font-size:10px;opacity:.58;margin-top:5px;display:flex;gap:6px;align-items:center}.statusTick{font-size:11px}.edited{font-size:10px;opacity:.55}
@@ -45,7 +47,7 @@ button,input{font:inherit}button{cursor:pointer}
 .replyQuote{border-right:3px solid #6675ff;padding:5px 8px;background:rgba(102,117,255,.08);border-radius:8px;margin-bottom:7px;font-size:11px;cursor:pointer}
 .deletedText{opacity:.55;font-style:italic}
 #replyBar{display:none;padding:7px 12px;background:rgba(255,255,255,.78);border-top:1px solid rgba(0,0,0,.07);align-items:center;gap:8px}.replyFlex{flex:1;min-width:0}.replyClose{border:0;background:transparent;font-size:18px}
-#sendArea{display:flex;align-items:center;gap:6px;padding:10px;background:rgba(255,255,255,.78);border-top:1px solid rgba(255,255,255,.24)}
+#sendArea{position:relative;display:flex;align-items:center;gap:6px;padding:10px;background:rgba(255,255,255,.78);border-top:1px solid rgba(255,255,255,.24)}
 #message{flex:1;min-width:0;padding:12px;border:1px solid #ddd;border-radius:11px;outline:0;background:rgba(255,255,255,.95)}
 #sendArea button{padding:10px 12px;border:0;border-radius:10px}.primary{background:linear-gradient(135deg,#3575ff,#6847e8);color:#fff}.record{background:#ececff}.recording{background:#ef4444!important;color:#fff}
 #imageInput{display:none}.popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2000;align-items:center;justify-content:center;padding:15px}.popupCard{width:min(520px,100%);max-height:90vh;overflow:auto;padding:22px;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 12px 28px rgba(0,0,0,.18)}
@@ -100,6 +102,8 @@ button,input{font:inherit}button{cursor:pointer}
 <div id="sendArea">
 <input id="message" placeholder="پیامت رو بنویس..." disabled onkeydown="handleEnter(event)" oninput="handleTypingInput()" onblur="stopTyping()">
 <input id="imageInput" type="file" accept="image/*" onchange="sendSelectedImage()">
+<button onclick="toggleStickerPanel()" id="stickerButton" disabled title="استیکر">😊</button>
+<div id="stickerPanel" class="stickerPanel"><div class="sectionTitle">✨ استیکرهای MS__Chat</div><div id="stickerGrid" class="stickerGrid"></div></div>
 <button onclick="document.getElementById('imageInput').click()" id="imageButton" disabled>🖼️</button>
 <button class="record" onclick="toggleRecording()" id="recordButton" disabled>🎤</button>
 <button class="primary" onclick="sendMessage()" id="sendButton" disabled>ارسال</button>
@@ -145,6 +149,13 @@ button,input{font:inherit}button{cursor:pointer}
 <button onclick="closePopup('addGroupMembersPopup')">بستن</button>
 </div>
 <p id="addGroupMembersMessage"></p>
+</div></div>
+
+<div id="groupReadersPopup" class="popup"><div class="popupCard">
+<h3 id="groupReadersTitle">👁️ چه کسانی دیدند؟</h3>
+<div id="groupReadersPreview" class="muted" style="margin-bottom:10px"></div>
+<div id="groupReadersList" class="readersGrid"></div>
+<button onclick="closePopup('groupReadersPopup')">بستن</button>
 </div></div>
 
 <div id="adminPopup" class="popup"><div class="popupCard"><h3>👑 مدیریت کاربران</h3><div id="adminUsers"></div><button onclick="closePopup('adminPopup')">بستن</button><p id="adminMessage"></p></div></div>
@@ -425,6 +436,7 @@ async function handleSocket(d){
    return
  }
  if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
+ if(d.type==="group-removed"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));groupMap.delete(String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){stopTyping();selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";cancelReply();qs("typingIndicator").classList.remove("show");enableComposer(false);qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","")}renderGroups();return}
  if(d.type==="message"){
    const m=d.message;
    if((selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.sender===selectedUser)){
@@ -448,6 +460,23 @@ async function handleSocket(d){
  if(d.type==="message-updated"){replaceMessage(d.message);return}
  if(d.type==="message-deleted"){removeMessage(d.id);return}
  if(d.type==="messages-read"){document.querySelectorAll(".mine .statusTick").forEach(x=>x.textContent="✓✓");return}
+ if(d.type==="group-message-read"){
+   const reader=d.reader||{};
+   for(const id of(d.message_ids||[])){
+     const m=messageDataMap.get(String(id));
+     if(!m||m.sender!==currentUsername)continue;
+     const current=Array.isArray(m.readers)?m.readers.slice():[];
+     if(!current.some(r=>r.username===reader.username))current.push(reader);
+     m.readers=current;m.read_count=current.length;messageDataMap.set(String(id),m);
+     const el=messageMap.get(String(id));
+     if(el)renderMessageElement(el,m,true);
+   }
+   return;
+ }
+ if(d.type==="group-message-readers"){
+   showGroupReaders(d.message_id,d.readers||[]);
+   return;
+ }
  if(d.type==="call-offer"){
    incomingCaller=d.from;incomingOffer=d.offer;incomingMode=d.mode||"audio";incomingCallId=d.call_id||newCallId();pendingCandidates=[];
    activeCallId=incomingCallId;
@@ -523,7 +552,7 @@ async function markDirectRead(sender){
 function selectUser(u){stopTyping();qs("typingIndicator").classList.remove("show");selectedType="user";selectedUser=u.username;unreadState.direct[u.username]=0;u.unread_count=0;renderUsers();selectedGroupId=null;selectedGroup=null;qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";qs("deleteConversationButton").style.display="inline-block";setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);syncCallButtons();qs("messages").innerHTML="";cancelReply();markDirectRead(u.username);loadDirectHistory(u.username)}
 function selectGroup(g){stopTyping();qs("typingIndicator").classList.remove("show");selectedType="group";unreadState.groups[String(g.id)]=0;renderGroups();selectedUser="";qs("deleteConversationButton").style.display="none";sendWs({action:"mark-group-read",group_id:g.id});selectedGroupId=g.id;selectedGroup=g;setHeader(g.name,g.avatar,groupAvatarUrl(g.id),"👥 "+(g.members_count||0)+" عضو");enableComposer(true);qs("membersButton").style.display="inline-block";qs("deleteGroupButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";qs("messages").innerHTML="";cancelReply();sendWs({action:"group-history",group_id:g.id});setTimeout(()=>sendWs({action:"group-info",group_id:g.id}),0);}
 function setHeader(name,avatar,avatarFallback,sub){qs("chatTitle").textContent=name;qs("chatSub").textContent=sub||"";setAvatar(qs("chatAvatar"),avatar,name,avatarFallback)}
-function enableComposer(v){["message","sendButton","recordButton","imageButton","callButton","videoButton"].forEach(id=>qs(id).disabled=!v);qs("hangupButton").style.display="none"}
+function enableComposer(v){["message","sendButton","recordButton","imageButton","stickerButton","callButton","videoButton"].forEach(id=>qs(id).disabled=!v);qs("hangupButton").style.display="none"}
 function isNearBottom(){const b=qs("messages");return b.scrollHeight-b.scrollTop-b.clientHeight<140}
 function mediaFallback(id){return messageFileUrl(id,false)}
 function mediaUrlFor(m){if(!m)return "";if(m.message_type==="image"||m.message_type==="audio")return messageFileUrl(m.id,false);return m.media||m.audio||""}
@@ -557,10 +586,13 @@ function renderMessageElement(el,m,mine){
  if(m.deleted){const t=document.createElement("div");t.className="deletedText";t.textContent="🚫 این پیام حذف شده است";el.appendChild(t)}
  else if(m.message_type==="image"&&m.media){const img=document.createElement("img");img.className="msgImage";img.loading="lazy";img.decoding="async";img.src=mediaUrlFor(m);img.dataset.messageId=m.id;img.onclick=()=>openImageViewer(m.id,img.src);el.appendChild(img)}
  else if(m.message_type==="audio"&&m.audio){const wrap=document.createElement("div");const a=document.createElement("audio");a.controls=true;a.preload="none";a.src=mediaUrlFor(m);a.className="audioMessage";wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود ویس";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
+ else if(m.message_type==="sticker"){const t=document.createElement("div");t.className="stickerMessage";t.textContent=m.message||"🙂";el.appendChild(t)}
  else {const t=document.createElement("div");t.className="messageText";t.textContent=m.message||"";el.appendChild(t)}
- const f=document.createElement("div");f.className="messageFooter";f.innerHTML=`<span>${formatDate(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;el.appendChild(f)
+ const f=document.createElement("div");f.className="messageFooter";let footerHtml=`<span>${formatDate(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;if(mine&&m.group_id){const rc=Number(m.read_count||((m.readers||[]).length));if(rc){footerHtml+=`<span class="groupReadHint" title="دیدن اعضایی که پیام را دیده‌اند">👁️ ${rc}</span>`}}f.innerHTML=footerHtml;el.appendChild(f)
  const actions=document.createElement("div");actions.className="actions";const r=document.createElement("button");r.textContent="↩️ Reply";r.onclick=()=>startReply(m);actions.appendChild(r)
- if(mine&&!m.deleted){if(m.message_type==="text"){const e=document.createElement("button");e.textContent="✏️ ویرایش";e.onclick=()=>editMessage(m.id,m.message);actions.appendChild(e)}const del=document.createElement("button");del.textContent="🗑️ حذف";del.onclick=()=>deleteMessage(m.id);actions.appendChild(del)}el.appendChild(actions)
+ if(mine&&!m.deleted){if(m.message_type==="text"){const e=document.createElement("button");e.textContent="✏️ ویرایش";e.onclick=(ev)=>{ev.stopPropagation();editMessage(m.id,m.message)};actions.appendChild(e)}const del=document.createElement("button");del.textContent="🗑️ حذف";del.onclick=(ev)=>{ev.stopPropagation();deleteMessage(m.id)};actions.appendChild(del)}el.appendChild(actions)
+ if(mine&&m.group_id&&!m.deleted){el.onclick=(ev)=>{if(ev.target.closest("button,a,audio,img,.replyQuote"))return;openGroupReaders(m.id)}}
+ const readHint=el.querySelector(".groupReadHint");if(readHint)readHint.onclick=(ev)=>{ev.stopPropagation();openGroupReaders(m.id)}
 }
 function replaceMessage(m){const key=String(m.id);messageDataMap.set(key,m);const el=messageMap.get(key);if(el)renderMessageElement(el,m,m.sender===currentUsername)}
 function removeMessage(id){const key=String(id),old=messageDataMap.get(key);if(!old)return;const updated={...old,deleted:true,message:"",media:null,audio:null};messageDataMap.set(key,updated);const el=messageMap.get(key);if(el)renderMessageElement(el,updated,updated.sender===currentUsername)}
@@ -673,6 +705,12 @@ async function deleteConversation(){
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 async function deleteMessage(id){if(!confirm("پیام حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);const d=await (await fetch("/delete-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 
+const STICKERS=["😂","🤣","😍","🥰","😘","😎","🤩","🥳","😴","😱","🤔","🙄","😡","😭","🤯","🥹","❤️","💔","🔥","👏","👍","👎","🙏","🎉","💀","👀","🤝","🚀","🎮","⚡"];
+function buildStickerPanel(){const grid=qs("stickerGrid");if(!grid||grid.children.length)return;for(const sticker of STICKERS){const b=document.createElement("button");b.className="stickerBtn";b.type="button";b.textContent=sticker;b.title="ارسال استیکر";b.onclick=()=>sendSticker(sticker);grid.appendChild(b)}}
+function toggleStickerPanel(){if(!selectedType)return;buildStickerPanel();qs("stickerPanel").classList.toggle("show")}
+document.addEventListener("click",e=>{const panel=qs("stickerPanel");const btn=qs("stickerButton");if(panel?.classList.contains("show")&&!panel.contains(e.target)&&e.target!==btn)panel.classList.remove("show")});
+async function sendSticker(sticker){if(!selectedType||!STICKERS.includes(sticker))return;const panel=qs("stickerPanel");panel?.classList.remove("show");stopTyping();const fd=new FormData();fd.append("sender",currentUsername);fd.append("receiver",targetKey());fd.append("token",authToken);fd.append("sticker",sticker);fd.append("reply_to",replyTo?.id||"");try{const r=await fetch("/send-sticker",{method:"POST",body:fd,cache:"no-store"});const d=await r.json();if(!r.ok||!d.success){alert(d.message||"ارسال استیکر ناموفق بود");return}if(d.message&&((selectedType==="group"&&d.message.group_id===selectedGroupId)||(selectedType==="user"&&d.message.receiver===selectedUser)))addMessageObj(d.message,true,true);cancelReply();}catch(e){console.error(e);alert("ارسال استیکر ناموفق بود")}}
+
 let imageSending=false;
 async function sendSelectedImage(){const f=qs("imageInput").files[0];if(!f||!selectedType||imageSending)return;stopTyping();imageSending=true;qs("imageButton").disabled=true;const fd=new FormData();fd.append("sender",currentUsername);fd.append("receiver",targetKey());fd.append("token",authToken);fd.append("image",f);fd.append("reply_to",replyTo?.id||"");try{const d=await (await fetch("/upload-image",{method:"POST",body:fd})).json();if(!d.success)alert(d.message);cancelReply()}catch{alert("ارسال عکس ناموفق بود")}qs("imageInput").value="";imageSending=false;qs("imageButton").disabled=false}
 
@@ -697,7 +735,11 @@ function showGroupMembers(){
    const meta=document.createElement("div");meta.className="memberMeta";
    const b=document.createElement("b");b.textContent=m.display_name;
    const s=document.createElement("small");s.textContent=m.username+(m.username===selectedGroup.owner?" • سازنده":"");
-   meta.append(b,s);row.append(av,meta);list.appendChild(row);
+   meta.append(b,s);row.append(av,meta);
+   if(selectedGroup.owner===currentUsername&&m.username!==selectedGroup.owner){
+     const rm=document.createElement("button");rm.className="danger";rm.textContent="حذف";rm.title="حذف از گروه";rm.onclick=(e)=>{e.stopPropagation();removeGroupMember(m.username)};row.appendChild(rm);
+   }
+   list.appendChild(row);
  });
  qs("addGroupMembersButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";
  openPopup("groupMembersPopup");
@@ -776,6 +818,51 @@ async function createGroup(){
    creatingGroup=false;
    if(button){button.disabled=false;button.textContent="ساخت گروه"}
  }
+}
+
+async function removeGroupMember(memberUsername){
+ if(!selectedGroup||selectedGroup.owner!==currentUsername||!memberUsername)return;
+ const member=selectedGroup.members?.find(m=>m.username===memberUsername);
+ const name=member?.display_name||memberUsername;
+ if(!confirm(`«${name}» از گروه حذف شود؟`))return;
+ const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("group_id",selectedGroup.id);fd.append("member_username",memberUsername);
+ try{
+   const d=await (await fetch("/remove-group-member",{method:"POST",body:fd,cache:"no-store"})).json();
+   if(!d.success){alert(d.message||"حذف عضو ناموفق بود.");return}
+   selectedGroup=d.group;
+   const idx=groupsCache.findIndex(g=>String(g.id)===String(d.group.id));
+   if(idx>=0)groupsCache[idx]={...groupsCache[idx],...d.group};
+   groupMap.set(String(d.group.id),d.group);
+   renderGroups();showGroupMembers();
+ }catch(e){console.error(e);alert("ارتباط با سرور برای حذف عضو برقرار نشد.")}
+}
+
+async function showGroupReaders(messageId,readers){
+ const m=messageDataMap.get(String(messageId));
+ if(!m||!m.group_id||m.sender!==currentUsername)return;
+ qs("groupReadersTitle").textContent="👁️ چه کسانی پیام را دیدند؟";
+ const preview=m.message_type==="sticker"?m.message:(m.message||m.message_type==="image"?"🖼️ عکس":m.message_type==="audio"?"🎤 ویس":"پیام");
+ qs("groupReadersPreview").textContent=preview.length>100?preview.slice(0,100)+"…":preview;
+ const list=qs("groupReadersList");list.innerHTML="";
+ if(!readers.length){list.innerHTML='<div class="muted">هنوز هیچ عضوی این پیام را ندیده است.</div>'}
+ for(const r of readers){
+   const row=document.createElement("div");row.className="readerRow";
+   const av=document.createElement("img");av.className="avatar tiny";setAvatar(av,(userMap.get(r.username)||{}).avatar,r.display_name,userAvatarUrl(r.username));
+   const meta=document.createElement("div");meta.className="readerMeta";const b=document.createElement("b");b.textContent=r.display_name;const small=document.createElement("small");small.textContent=r.username;meta.append(b,small);row.append(av,meta);list.appendChild(row);
+ }
+ openPopup("groupReadersPopup");
+}
+
+async function openGroupReaders(messageId){
+ const m=messageDataMap.get(String(messageId));
+ if(!m||m.sender!==currentUsername||!m.group_id)return;
+ try{
+   const r=await fetch(`/api/group-message-readers?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(messageId)}`,{cache:"no-store"});
+   const d=await r.json();
+   if(d.success===false){alert(d.message||"دریافت بازدیدکنندگان ناموفق بود.");return}
+   if(m){m.readers=d.readers||[];m.read_count=m.readers.length;messageDataMap.set(String(messageId),m)}
+   showGroupReaders(messageId,d.readers||[]);
+ }catch(e){console.error(e);alert("دریافت لیست کسانی که پیام را دیده‌اند ناموفق بود.")}
 }
 
 async function deleteGroup(){
@@ -880,7 +967,7 @@ async function processPendingCandidates(){
     try{await peerConnection.addIceCandidate(item.candidate)}catch(e){console.warn("Pending ICE candidate error:",e)}
   }
 }
-function formatDate(s){if(!s)return"";const d=new Date(String(s).replace(" ","T"));return isNaN(d)?String(s):d.toLocaleString("fa-IR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}
+function formatDate(s){if(!s)return"";let raw=String(s).trim();if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw))raw=raw.replace(" ","T")+"Z";else raw=raw.replace(" ","T");const d=new Date(raw);return isNaN(d.getTime())?String(s):d.toLocaleString("fa-IR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})}
 async function deleteMyAccount(){if(!confirm("حساب شما و اطلاعات مرتبط حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",currentUsername);const d=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(d.success){location.reload()}else qs("accountDeleteMessage").textContent=d.message}
 async function openAdminPopup(){openPopup("adminPopup");const d=await (await fetch(`/api/admin/users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`)).json();const box=qs("adminUsers");box.innerHTML="";(d.users||[]).forEach(u=>{const row=document.createElement("div");row.className="searchItem";const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(u.display_name)}</b><div class="muted">${escapeHtml(u.username)}</div>`;row.appendChild(t);if(u.username!==OWNER_USERNAME){const b=document.createElement("button");b.className="danger";b.textContent="حذف";b.onclick=async()=>{if(!confirm(`حذف حساب ${u.username}؟`))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",u.username);const x=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(x.success)openAdminPopup();else qs("adminMessage").textContent=x.message};row.appendChild(b)}box.appendChild(row)})}
 

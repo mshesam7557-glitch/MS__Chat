@@ -359,12 +359,15 @@ async function handleSocket(d){
  if(d.type==="messages-read"){document.querySelectorAll(".mine .statusTick").forEach(x=>x.textContent="✓✓");return}
  if(d.type==="call-offer"){
    incomingCaller=d.from;incomingOffer=d.offer;incomingMode=d.mode||"audio";incomingCallId=d.call_id||newCallId();pendingCandidates=[];
+   activeCallId=incomingCallId;
+   const u=usersCache.find(x=>x.username===incomingCaller);
+   if(u){setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":"⚫ آفلاین");}
    qs("incomingText").textContent=`${d.from} ${incomingMode==="video"?"📹":"📞"} تماس می‌گیرد`;
    openPopup("incomingPopup");return;
  }
  if(d.type==="call-answer"){
    if(activeCallId&&d.call_id&&d.call_id!==activeCallId)return;
-   if(peerConnection){try{await peerConnection.setRemoteDescription(d.answer);await processPendingCandidates()}catch(e){console.error('Call answer error',e)}}
+   if(peerConnection){try{await peerConnection.setRemoteDescription(d.answer);await processPendingCandidates()}catch(e){console.error('Call answer error',e);alert('برقراری تماس ناموفق بود.')}}
    return;
  }
  if(d.type==="ice-candidate"){
@@ -561,81 +564,82 @@ async function deleteGroup(){
 }
 
 function createPeerConnection(other,mode,callId){
- peerConnection=new RTCPeerConnection(rtcConfig);
- peerConnection.onicecandidate=e=>{if(e.candidate)sendWs({action:"ice-candidate",to:other,candidate:e.candidate,call_id:callId})};
- peerConnection.ontrack=e=>{if(mode==="video"){if(e.streams[0])qs("remoteVideo").srcObject=e.streams[0]}else if(e.streams[0]){qs("remoteAudio").srcObject=e.streams[0];qs("remoteAudio").play?.().catch(()=>{})}};
- peerConnection.oniceconnectionstatechange=()=>{
-   const s=peerConnection?.iceConnectionState;
-   console.log("ICE state:",s);
-   if(s==="failed")console.warn("ICE connection failed; TURN may be required on this network.");
-   if(s==="connected"||s==="completed"){clearCallTimer();qs("chatSub").textContent="🟢 تماس برقرار شد"}
- };
- peerConnection.onconnectionstatechange=()=>{
-   const s=peerConnection?.connectionState;console.log("Peer state:",s);
-   if(s==="connected"){clearCallTimer();qs("chatSub").textContent="🟢 تماس برقرار شد"}
-   if(["failed","closed"].includes(s)){endCall()}
- };
- peerConnection.onicecandidateerror=e=>console.warn("ICE server error",e.errorCode,e.url,e.errorText);
- return peerConnection;
+  peerConnection=new RTCPeerConnection(rtcConfig);
+  peerConnection.onicecandidate=e=>{if(e.candidate)console.log("ICE candidate gathered:",e.candidate.type||"unknown",e.candidate.protocol||"");};
+  peerConnection.ontrack=e=>{
+    if(!e.streams?.[0])return;
+    if(mode==="video"){
+      const v=qs("remoteVideo");v.srcObject=e.streams[0];v.autoplay=true;v.playsInline=true;v.play?.().catch(err=>console.warn("Remote video play blocked:",err));
+    }else{
+      const a=qs("remoteAudio");a.srcObject=e.streams[0];a.autoplay=true;a.muted=false;a.volume=1;a.play?.().catch(err=>console.warn("Remote audio play blocked:",err));
+    }
+  };
+  peerConnection.onicegatheringstatechange=()=>console.log("ICE gathering:",peerConnection?.iceGatheringState);
+  peerConnection.oniceconnectionstatechange=()=>{
+    const s=peerConnection?.iceConnectionState;console.log("ICE state:",s);
+    if(s==="failed")qs("chatSub").textContent="🔴 اتصال تماس ناموفق بود";
+    else if(s==="disconnected")qs("chatSub").textContent="🟠 اتصال تماس ناپایدار...";
+    else if(s==="connected"||s==="completed"){clearCallTimer();qs("chatSub").textContent="🟢 تماس برقرار شد";}
+  };
+  peerConnection.onconnectionstatechange=()=>{
+    const s=peerConnection?.connectionState;console.log("Peer state:",s);
+    if(s==="connected"){clearCallTimer();qs("chatSub").textContent="🟢 تماس برقرار شد";}
+    if(["failed","closed"].includes(s)&&activeCallId)endCall();
+  };
+  peerConnection.onicecandidateerror=e=>console.warn("ICE server error",e.errorCode,e.url,e.errorText);
+  return peerConnection;
+}
+function waitForIceGathering(pc,timeoutMs=10000){
+  return new Promise(resolve=>{
+    if(!pc||pc.iceGatheringState==="complete"){resolve();return;}
+    let done=false;let timer=null;
+    const onState=()=>{if(pc.iceGatheringState==="complete")finish();};
+    const finish=()=>{if(done)return;done=true;clearTimeout(timer);pc.removeEventListener("icegatheringstatechange",onState);resolve();};
+    timer=setTimeout(()=>{console.warn("ICE gathering timeout; continuing with current SDP");finish();},timeoutMs);
+    pc.addEventListener("icegatheringstatechange",onState);
+  });
 }
 let callInitiator=false;
 async function startCall(mode){
- if(selectedType!=="user")return alert("تماس فقط با کاربر است.");
- if(!selectedUser)return;
- try{
-   await loadRtcConfig();
-   pendingCandidates=[];incomingCaller="";incomingOffer=null;incomingCallId="";activeCallId=newCallId();callInitiator=true;
-   localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});
-   createPeerConnection(selectedUser,mode,activeCallId);
-   localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
-   if(mode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex"}
-   qs("chatSub").textContent="📞 در حال تماس...";
-   const offer=await peerConnection.createOffer();
-   await peerConnection.setLocalDescription(offer);
-   sendWs({action:"call-offer",to:selectedUser,offer:peerConnection.localDescription,mode,call_id:activeCallId});
-   showHangup();
-   clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۳۰ ثانیه برقرار نشد.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall()},30000);
- }catch(e){console.error("startCall error",e);alert("شروع تماس ناموفق بود. دسترسی میکروفون/دوربین و اتصال اینترنت را بررسی کن.");endCall()}
+  if(selectedType!=="user")return alert("تماس فقط با کاربر است.");if(!selectedUser)return;
+  try{
+    await loadRtcConfig(true);
+    pendingCandidates=[];incomingCaller="";incomingOffer=null;incomingCallId="";activeCallId=newCallId();callInitiator=true;
+    localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});
+    createPeerConnection(selectedUser,mode,activeCallId);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+    if(mode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex";}
+    qs("chatSub").textContent="📞 در حال تماس...";
+    const offer=await peerConnection.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:mode==="video"});
+    await peerConnection.setLocalDescription(offer);await waitForIceGathering(peerConnection,10000);
+    sendWs({action:"call-offer",to:selectedUser,offer:peerConnection.localDescription,mode,call_id:activeCallId});
+    showHangup();clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۳۰ ثانیه برقرار نشد.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();},30000);
+  }catch(e){console.error("startCall error",e);alert("شروع تماس ناموفق بود. دسترسی میکروفون/دوربین و اتصال اینترنت را بررسی کن.");endCall();}
 }
 async function acceptCall(){
- closePopup("incomingPopup");
- selectedType="user";selectedUser=incomingCaller;
- const thisCallId=incomingCallId||newCallId();activeCallId=thisCallId;callInitiator=false;
- const u=usersCache.find(x=>x.username===incomingCaller);
- if(u){setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":"⚫ آفلاین");enableComposer(true)}
- try{
-   await loadRtcConfig();
-   localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:incomingMode==="video"});
-   createPeerConnection(incomingCaller,incomingMode,thisCallId);
-   localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
-   if(incomingMode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex"}
-   await peerConnection.setRemoteDescription(incomingOffer);
-   await processPendingCandidates();
-   const ans=await peerConnection.createAnswer();
-   await peerConnection.setLocalDescription(ans);
-   sendWs({action:"call-answer",to:incomingCaller,answer:peerConnection.localDescription,call_id:thisCallId});
-   showHangup();
-   incomingCaller="";incomingOffer=null;incomingCallId="";
-   clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس برقرار نشد.");endCall()},30000);
- }catch(e){console.error("acceptCall error",e);rejectCall()}
+  closePopup("incomingPopup");selectedType="user";selectedUser=incomingCaller;
+  const thisCallId=incomingCallId||activeCallId||newCallId();activeCallId=thisCallId;callInitiator=false;
+  const u=usersCache.find(x=>x.username===incomingCaller);if(u){setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);}
+  try{
+    await loadRtcConfig(true);localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:incomingMode==="video"});
+    createPeerConnection(incomingCaller,incomingMode,thisCallId);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+    if(incomingMode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex";}
+    await peerConnection.setRemoteDescription(incomingOffer);
+    const ans=await peerConnection.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:incomingMode==="video"});
+    await peerConnection.setLocalDescription(ans);await waitForIceGathering(peerConnection,10000);
+    sendWs({action:"call-answer",to:incomingCaller,answer:peerConnection.localDescription,call_id:thisCallId});
+    showHangup();incomingCaller="";incomingOffer=null;incomingCallId="";clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس برقرار نشد.");endCall();},30000);
+  }catch(e){console.error("acceptCall error",e);alert("پذیرش تماس ناموفق بود: "+(e?.message||e));if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:thisCallId});endCall();}
 }
-function rejectCall(){if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:incomingCallId});closePopup("incomingPopup");incomingCaller="";incomingOffer=null;incomingCallId=""}
-function showHangup(){qs("callButton").style.display="none";qs("videoButton").style.display="none";qs("hangupButton").style.display="inline-block"}
-function hangUp(){if(selectedUser&&activeCallId)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall()}
+function rejectCall(){const cid=incomingCallId||activeCallId;if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:cid});closePopup("incomingPopup");incomingCaller="";incomingOffer=null;incomingCallId="";activeCallId="";}
+function showHangup(){qs("callButton").style.display="none";qs("videoButton").style.display="none";qs("hangupButton").style.display="inline-block";}
+function hangUp(){if(selectedUser&&activeCallId)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();}
 function endCall(){
- clearCallTimer();
- if(peerConnection){peerConnection.onconnectionstatechange=null;peerConnection.close();peerConnection=null}
- if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
- qs("remoteAudio").srcObject=null;qs("remoteVideo").srcObject=null;qs("localVideo").srcObject=null;qs("videoOverlay").style.display="none";pendingCandidates=[];activeCallId="";callInitiator=false;
- qs("callButton").style.display="inline-block";qs("videoButton").style.display="inline-block";qs("hangupButton").style.display="none";
- syncCallButtons();
+  clearCallTimer();if(peerConnection){peerConnection.onconnectionstatechange=null;try{peerConnection.close()}catch{};peerConnection=null;}
+  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
+  qs("remoteAudio").srcObject=null;qs("remoteVideo").srcObject=null;qs("localVideo").srcObject=null;qs("videoOverlay").style.display="none";pendingCandidates=[];activeCallId="";callInitiator=false;
+  qs("callButton").style.display="inline-block";qs("videoButton").style.display="inline-block";qs("hangupButton").style.display="none";syncCallButtons();
 }
-async function processPendingCandidates(){
- if(!peerConnection?.remoteDescription)return;
- const queue=[...pendingCandidates].filter(x=>!x.call_id||x.call_id===activeCallId||x.call_id===incomingCallId);
- pendingCandidates=[];
- for(const item of queue){try{await peerConnection.addIceCandidate(item.candidate||item)}catch(e){console.warn("Pending ICE error",e)}}
-}
+function processPendingCandidates(){return Promise.resolve();}
 function formatDate(s){if(!s)return"";const d=new Date(String(s).replace(" ","T"));return isNaN(d)?String(s):d.toLocaleString("fa-IR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}
 async function deleteMyAccount(){if(!confirm("حساب شما و اطلاعات مرتبط حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",currentUsername);const d=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(d.success){location.reload()}else qs("accountDeleteMessage").textContent=d.message}
 async function openAdminPopup(){openPopup("adminPopup");const d=await (await fetch(`/api/admin/users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`)).json();const box=qs("adminUsers");box.innerHTML="";(d.users||[]).forEach(u=>{const row=document.createElement("div");row.className="searchItem";const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(u.display_name)}</b><div class="muted">${escapeHtml(u.username)}</div>`;row.appendChild(t);if(u.username!==OWNER_USERNAME){const b=document.createElement("button");b.className="danger";b.textContent="حذف";b.onclick=async()=>{if(!confirm(`حذف حساب ${u.username}؟`))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",u.username);const x=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(x.success)openAdminPopup();else qs("adminMessage").textContent=x.message};row.appendChild(b)}box.appendChild(row)})}

@@ -2141,6 +2141,26 @@ async def chat(websocket: WebSocket, username: str, token: str):
                 await send_to(sender, {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,sender)})
                 continue
 
+            if action == "typing":
+                is_typing = bool(data.get("is_typing"))
+                receiver = (data.get("to") or "").strip()
+                if receiver:
+                    if await asyncio.to_thread(user_exists, receiver):
+                        await send_to(receiver, {"type": "typing", "from": username, "is_typing": is_typing})
+                    continue
+                try:
+                    gid = int(data.get("group_id"))
+                except (TypeError, ValueError):
+                    continue
+                if not await asyncio.to_thread(is_group_member, gid, username):
+                    continue
+                recipients = await group_recipients(gid, username)
+                await asyncio.gather(*(
+                    send_to(u, {"type": "typing", "from": username, "group_id": gid, "is_typing": is_typing})
+                    for u in recipients
+                ), return_exceptions=True)
+                continue
+
             if action == "message":
                 receiver = data.get("to")
                 text = (data.get("message") or "").strip()

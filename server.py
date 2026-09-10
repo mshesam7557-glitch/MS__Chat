@@ -1517,13 +1517,22 @@ def _normalize_ice_servers(value):
 
 
 def get_rtc_ice_servers():
-    # Keep the no-TURN path fast and deterministic.  We intentionally do not
-    # contact any external TURN credentials endpoint here.  A slow provider
-    # must never block /api/rtc-config or prevent a call from starting.
-    return [
+    # Always keep free STUN servers first. If TURN credentials are configured in
+    # Render, append them so WebRTC can relay media when direct P2P is blocked by NAT.
+    servers = [
         {"urls": "stun:stun.cloudflare.com:3478"},
         {"urls": "stun:stun.l.google.com:19302"},
     ]
+
+    if TURN_URLS and TURN_USERNAME and TURN_CREDENTIAL:
+        urls = [u.strip() for u in TURN_URLS.split(",") if u.strip()]
+        if urls:
+            servers.append({
+                "urls": urls,
+                "username": TURN_USERNAME,
+                "credential": TURN_CREDENTIAL,
+            })
+    return servers
 
 
 def _push_one(subscription_obj, title, body, url):

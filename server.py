@@ -228,6 +228,14 @@ def init_db():
                             PRIMARY KEY (username, other_username)
                         )
                     """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS group_message_reads (
+                            message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                            username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                            read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (message_id, username)
+                        )
+                    """)
 
                     for sql in [
                         "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT",
@@ -253,6 +261,8 @@ def init_db():
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_pair ON messages(sender, receiver, id DESC)")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(receiver, status, id DESC) WHERE group_id IS NULL AND deleted=FALSE")
                     cursor.execute("CREATE INDEX IF NOT EXISTS idx_push_subscriptions_username ON push_subscriptions(username)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_group_message_reads_message ON group_message_reads(message_id, read_at)")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS idx_group_message_reads_user ON group_message_reads(username, message_id)")
 
                     cursor.execute("SELECT pg_advisory_unlock(hashtext('ms_chat_schema_v6'))")
                 connection.commit()
@@ -787,7 +797,7 @@ def get_user_groups(username):
     ]
 
 
-def get_group_history(group_id):
+def get_group_history(group_id, viewer=None):
     with get_db() as connection:
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -796,7 +806,103 @@ def get_group_history(group_id):
                 FROM messages WHERE group_id=%s ORDER BY id DESC LIMIT %s
             """, (group_id, MAX_HISTORY_MESSAGES))
             rows = cursor.fetchall()
-    return rows_to_messages(rows)
+            messages = rows_to_messages(rows)
+
+            # For the current user's own group messages, include who has read them.
+            own_ids = [int(m["id"]) for m in messages if viewer and m.get("sender") == viewer and m.get("group_id")]
+            if own_ids:
+                placeholders = ",".join(["%s"] * len(own_ids))
+                cursor.execute(f"""
+                    SELECT r.message_id, r.username,
+                           COALESCE(u.display_name, u.username) AS display_name,
+                           r.read_at
+                    FROM group_message_reads r
+                    JOIN users u ON u.username=r.username
+                    WHERE r.message_id IN ({placeholders})
+                    ORDER BY r.message_id, r.read_at, r.username
+                """, own_ids)
+                read_rows = cursor.fetchall()
+            else:
+                read_rows = []
+
+    readers_by_message = {}
+    for r in read_rows:
+        readers_by_message.setdefault(str(r["message_id"]), []).append({
+            "username": r["username"],
+            "display_name": r["display_name"] or r["username"],
+            "read_at": now_iso(r["read_at"]),
+        })
+    for msg in messages:
+        if msg.get("group_id") and msg.get("sender") == viewer:
+            msg["readers"] = readers_by_message.get(str(msg["id"]), [])
+            msg["read_count"] = len(msg["readers"])
+    return messages
+
+
+def mark_group_messages_read(group_id, username):
+    """Mark all currently unread incoming group messages as read for one user.
+
+    Group message state is per-member, so we never change the shared messages.status.
+    Returns the newly-read message ids grouped by sender for live receipt updates.
+    """
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, sender
+                FROM messages
+                WHERE group_id=%s
+                  AND sender<>%s
+                  AND deleted=FALSE
+                  AND NOT EXISTS (
+                      SELECT 1 FROM group_message_reads r
+                      WHERE r.message_id=messages.id AND r.username=%s
+                  )
+            """, (group_id, username, username))
+            rows = cursor.fetchall()
+
+            if rows:
+                ids = [r["id"] for r in rows]
+                values = [(int(mid), username) for mid in ids]
+                cursor.executemany("""
+                    INSERT INTO group_message_reads(message_id, username)
+                    VALUES (%s,%s)
+                    ON CONFLICT (message_id, username) DO NOTHING
+                """, values)
+            connection.commit()
+    by_sender = {}
+    for r in rows:
+        by_sender.setdefault(r["sender"], []).append(int(r["id"]))
+    return by_sender
+
+
+def get_group_message_readers(message_id, viewer):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT m.group_id, m.sender
+                FROM messages m
+                WHERE m.id=%s
+            """, (message_id,))
+            msg = cursor.fetchone()
+            if not msg:
+                return None, []
+            if not msg["group_id"] or msg["sender"] != viewer:
+                return None, []
+            cursor.execute("""
+                SELECT r.username, COALESCE(u.display_name, u.username) AS display_name,
+                       r.read_at
+                FROM group_message_reads r
+                JOIN users u ON u.username=r.username
+                JOIN group_members gm ON gm.group_id=%s AND gm.username=r.username
+                WHERE r.message_id=%s
+                ORDER BY r.read_at, r.username
+            """, (msg["group_id"], message_id))
+            rows = cursor.fetchall()
+    return msg["group_id"], [{
+        "username": r["username"],
+        "display_name": r["display_name"] or r["username"],
+        "read_at": now_iso(r["read_at"]),
+    } for r in rows]
 
 
 def save_message(sender, receiver, message="", message_type="text",
@@ -1012,12 +1118,17 @@ def get_unread_counts(username):
             cursor.execute("""
                 SELECT group_id, COUNT(*) AS unread_count
                 FROM messages
-                WHERE group_id IS NOT NULL AND status<>'read' AND deleted=FALSE
-                  AND sender<>%s AND EXISTS (
+                WHERE group_id IS NOT NULL AND deleted=FALSE
+                  AND sender<>%s
+                  AND EXISTS (
                     SELECT 1 FROM group_members gm WHERE gm.group_id=messages.group_id AND gm.username=%s
                   )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM group_message_reads r
+                    WHERE r.message_id=messages.id AND r.username=%s
+                  )
                 GROUP BY group_id
-            """, (username,username))
+            """, (username,username,username))
             groups={str(r["group_id"]):int(r["unread_count"]) for r in cursor.fetchall()}
     return {"direct":direct,"groups":groups}
 
@@ -1878,6 +1989,49 @@ async def add_group_members(
         return {"success": False, "message": f"خطا در افزودن اعضا: {type(error).__name__}"}
 
 
+@app.post("/remove-group-member")
+async def remove_group_member(
+    username: str = Form(...),
+    token: str = Form(...),
+    group_id: int = Form(...),
+    member_username: str = Form(...),
+):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    member_username = (member_username or "").strip()
+    if not member_username or member_username == username:
+        return {"success": False, "message": "عضو نامعتبر است."}
+    try:
+        with get_db() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id, name, owner FROM groups WHERE id=%s", (group_id,))
+                group = cursor.fetchone()
+                if not group:
+                    return {"success": False, "message": "گروه پیدا نشد."}
+                if group["owner"] != username:
+                    return {"success": False, "message": "فقط سازنده گروه می‌تواند اعضا را حذف کند."}
+                if member_username == group["owner"]:
+                    return {"success": False, "message": "سازنده گروه را نمی‌توان حذف کرد."}
+                cursor.execute("SELECT 1 FROM group_members WHERE group_id=%s AND username=%s", (group_id, member_username))
+                if not cursor.fetchone():
+                    return {"success": False, "message": "این کاربر عضو گروه نیست."}
+                cursor.execute("DELETE FROM group_members WHERE group_id=%s AND username=%s", (group_id, member_username))
+            connection.commit()
+
+        _group_info_cache.pop(group_id, None)
+        invalidate_membership_cache(group_id)
+        info = await asyncio.to_thread(get_group_info, group_id)
+        remaining = [m["username"] for m in (info or {}).get("members", [])]
+        await send_to(member_username, {"type":"group-removed", "group_id":group_id})
+        for member in remaining:
+            await send_to(member, {"type":"group-info", "group":info})
+            await send_to(member, {"type":"groups", "groups":await asyncio.to_thread(get_user_groups, member)})
+        return {"success": True, "group": info, "removed": member_username}
+    except Exception as error:
+        print("Remove group member error:", repr(error))
+        return {"success": False, "message": f"خطا در حذف عضو: {type(error).__name__}"}
+
+
 @app.post("/delete-group")
 async def delete_group(
     username: str = Form(...),
@@ -2038,6 +2192,22 @@ async def api_delete_conversation(
         return {"success": False, "message": "حذف گفتگو ناموفق بود."}
 
 
+@app.get("/api/group-message-readers")
+async def api_group_message_readers(username: str, token: str, message_id: int):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود.", "readers": []}
+    try:
+        gid, readers = await asyncio.to_thread(get_group_message_readers, message_id, username)
+        if not gid:
+            return {"success": False, "message": "این پیام متعلق به شما در یک گروه نیست.", "readers": []}
+        if not await asyncio.to_thread(is_group_member, gid, username):
+            return {"success": False, "message": "شما عضو این گروه نیستید.", "readers": []}
+        return {"success": True, "message_id": message_id, "group_id": gid, "readers": readers}
+    except Exception as error:
+        print("Group readers API error:", repr(error))
+        return {"success": False, "message": "دریافت بازدیدکنندگان ناموفق بود.", "readers": []}
+
+
 @app.get("/api/history")
 async def api_history(username: str, token: str, user: str):
     if not verify_token(username, token):
@@ -2049,6 +2219,48 @@ async def api_history(username: str, token: str, user: str):
         return {"success": False, "message": "این کاربر وجود ندارد.", "messages": []}
     messages = await asyncio.to_thread(get_direct_history, username, user)
     return {"success": True, "messages": messages}
+
+
+@app.post("/send-sticker")
+async def send_sticker_http(
+    sender: str = Form(...),
+    receiver: str = Form(...),
+    token: str = Form(...),
+    sticker: str = Form(...),
+    reply_to: str = Form(""),
+):
+    if not verify_token(sender, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    allowed = {"😂","🤣","😍","🥰","😘","😎","🤩","🥳","😴","😱","🤔","🙄","😡","😭","🤯","🥹","❤️","💔","🔥","👏","👍","👎","🙏","🎉","💀","👀","🤝","🚀","🎮","⚡"}
+    sticker = (sticker or "").strip()
+    if sticker not in allowed:
+        return {"success": False, "message": "استیکر نامعتبر است."}
+    receiver=(receiver or "").strip()
+    if not receiver:
+        return {"success": False, "message": "گیرنده مشخص نیست."}
+    if receiver.startswith("group:"):
+        try: gid=int(receiver.split(":",1)[1])
+        except (TypeError,ValueError): return {"success":False,"message":"گروه نامعتبر است."}
+        if not await asyncio.to_thread(is_group_member,gid,sender):
+            return {"success":False,"message":"شما عضو این گروه نیستید."}
+        target_receiver=""
+    else:
+        gid=None
+        if not await asyncio.to_thread(user_exists,receiver):
+            return {"success":False,"message":"این کاربر وجود ندارد."}
+        target_receiver=receiver
+    try:
+        rid=int(reply_to) if reply_to else None
+    except (TypeError,ValueError): rid=None
+    try:
+        mid=await asyncio.to_thread(save_message,sender,target_receiver,sticker,"sticker",None,None,rid,gid)
+        msg=await asyncio.to_thread(get_message,mid)
+        if not msg:return {"success":False,"message":"استیکر ذخیره نشد."}
+        asyncio.create_task(deliver_message_safe(msg))
+        return {"success":True,"message":msg}
+    except Exception as error:
+        print("HTTP sticker error:",repr(error))
+        return {"success":False,"message":f"خطا در ذخیره استیکر: {type(error).__name__}"}
 
 
 @app.post("/send-message")
@@ -2185,7 +2397,7 @@ async def chat(websocket: WebSocket, username: str, token: str):
                 await websocket.send_json({
                     "type": "group-history",
                     "group_id": gid,
-                    "messages": await asyncio.to_thread(get_group_history, gid),
+                    "messages": await asyncio.to_thread(get_group_history, gid, username),
                 })
                 continue
 
@@ -2196,14 +2408,26 @@ async def chat(websocket: WebSocket, username: str, token: str):
                     continue
                 if not await asyncio.to_thread(is_group_member, gid, username):
                     continue
-                with get_db() as connection:
-                    with connection.cursor() as cursor:
-                        cursor.execute("""
-                            UPDATE messages SET status='read'
-                            WHERE group_id=%s AND sender<>%s AND status<>'read' AND deleted=FALSE
-                        """, (gid, username))
-                    connection.commit()
+                by_sender = await asyncio.to_thread(mark_group_messages_read, gid, username)
+                reader_info = await asyncio.to_thread(get_push_user_display_name, username)
+                for sender, message_ids in by_sender.items():
+                    await send_to(sender, {
+                        "type": "group-message-read",
+                        "group_id": gid,
+                        "message_ids": message_ids,
+                        "reader": {"username": username, "display_name": reader_info},
+                    })
                 await send_to(username, {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,username)})
+                continue
+
+            if action == "group-message-readers":
+                try:
+                    mid = int(data.get("message_id"))
+                except (TypeError, ValueError):
+                    continue
+                gid, readers = await asyncio.to_thread(get_group_message_readers, mid, username)
+                if gid and await asyncio.to_thread(is_group_member, gid, username):
+                    await websocket.send_json({"type":"group-message-readers", "message_id":mid, "group_id":gid, "readers":readers})
                 continue
 
             if action == "mark-read":

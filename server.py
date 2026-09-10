@@ -220,6 +220,14 @@ def init_db():
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     """)
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS hidden_conversations (
+                            username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                            other_username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                            hidden_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (username, other_username)
+                        )
+                    """)
 
                     for sql in [
                         "ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name TEXT",
@@ -795,6 +803,14 @@ def save_message(sender, receiver, message="", message_type="text",
                  media=None, audio=None, reply_to=None, group_id=None):
     with get_db() as connection:
         with connection.cursor() as cursor:
+            # A new direct message makes a previously hidden conversation
+            # visible again for both sides. Group messages are unaffected.
+            if group_id is None and receiver:
+                cursor.execute("""
+                    DELETE FROM hidden_conversations
+                    WHERE (username=%s AND other_username=%s)
+                       OR (username=%s AND other_username=%s)
+                """, (sender, receiver, receiver, sender))
             cursor.execute("""
                 INSERT INTO messages
                 (sender, receiver, message, audio, status, message_type, media,
@@ -869,19 +885,14 @@ async def register(username: str = Form(...), password: str = Form(...)):
                 """, (username, hash_password(password), username))
             connection.commit()
         invalidate_users_cache()
-        return {"success": True, "message": "حساب با موفقیت ساخته شد."}
+        return {"success": True, "message": "✅ حساب شما با موفقیت ساخته شد. حالا می‌توانید با همین نام کاربری وارد شوید."}
     except psycopg.errors.UniqueViolation:
         return {"success": False, "message": "این نام کاربری قبلاً ثبت شده است."}
 
 
 
 def get_recent_chat_users(username):
-    """Return direct-chat users ordered by the most recent message.
-
-    Builds the latest message id per conversation in a separate CTE, which
-    avoids PostgreSQL DISTINCT ON / ORDER BY parameter-reference errors and
-    avoids selecting non-grouped columns in the same grouped query.
-    """
+    """Return visible direct-chat users ordered by latest message."""
     with get_db() as connection:
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -891,6 +902,7 @@ def get_recent_chat_users(username):
                         CASE WHEN sender=%s THEN receiver ELSE sender END AS other_user
                     FROM messages
                     WHERE group_id IS NULL
+                      AND deleted = FALSE
                       AND (sender=%s OR receiver=%s)
                 ),
                 latest AS (
@@ -916,9 +928,12 @@ def get_recent_chat_users(username):
                 FROM latest
                 JOIN users u ON u.username = latest.other_user
                 LEFT JOIN unread ON unread.other_user = u.username
+                LEFT JOIN hidden_conversations hc
+                  ON hc.username=%s AND hc.other_username=u.username
+                WHERE hc.username IS NULL
                 ORDER BY latest.last_id DESC
             """,
-                (username, username, username, username)
+                (username, username, username, username, username)
             )
             rows = cursor.fetchall()
 
@@ -930,6 +945,28 @@ def get_recent_chat_users(username):
         "online": bool(connections.get(r["username"])),
         "unread_count": int(r["unread_count"] or 0),
     } for r in rows]
+
+
+def hide_conversation(username: str, other_username: str):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO hidden_conversations(username, other_username)
+                VALUES (%s,%s)
+                ON CONFLICT (username, other_username)
+                DO UPDATE SET hidden_at=CURRENT_TIMESTAMP
+            """, (username, other_username))
+        connection.commit()
+
+
+def unhide_conversation(username: str, other_username: str):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM hidden_conversations
+                WHERE username=%s AND other_username=%s
+            """, (username, other_username))
+        connection.commit()
 
 
 def search_users(query, limit=50):
@@ -1560,6 +1597,22 @@ def _push_one(subscription_obj, title, body, url):
         return True
 
 
+def get_push_user_display_name(username):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT COALESCE(display_name, username) AS name FROM users WHERE username=%s", (username,))
+            row = cursor.fetchone()
+    return (row["name"] if row else username) or username
+
+
+def get_push_group_name(group_id):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT name FROM groups WHERE id=%s", (group_id,))
+            row = cursor.fetchone()
+    return (row["name"] if row else "گروه") or "گروه"
+
+
 async def send_push_to_user(username, title, body, url="/"):
     if not VAPID_PRIVATE_KEY:
         return
@@ -1607,13 +1660,16 @@ async def deliver_message(msg):
             "message": msg,
             "group_id": msg["group_id"],
         })
+        sender_name = await asyncio.to_thread(get_push_user_display_name, msg["sender"])
+        group_name = await asyncio.to_thread(get_push_group_name, msg["group_id"])
+        push_title = f"👥 {group_name} • {sender_name}"
+        push_body = msg.get("message") or "📎 فایل جدید"
         for username in recipients:
-            asyncio.create_task(send_push_to_user(
-                username,
-                "پیام جدید در MS Chat",
-                msg.get("message") or "📎 فایل جدید",
-                "/",
-            ))
+            asyncio.create_task(send_push_to_user(username, push_title, push_body, "/"))
+            asyncio.create_task(send_to(username, {
+                "type":"unread",
+                "unread":await asyncio.to_thread(get_unread_counts, username),
+            }))
         return
 
     delivered = await send_to(msg["receiver"], {
@@ -1630,12 +1686,10 @@ async def deliver_message(msg):
             connection.commit()
         msg["status"] = "delivered"
     await send_to(msg["sender"], {"type": "sent", "message": msg})
-    asyncio.create_task(send_push_to_user(
-        msg["receiver"],
-        "پیام جدید در MS Chat",
-        msg.get("message") or "📎 فایل جدید",
-        "/",
-    ))
+    sender_name = await asyncio.to_thread(get_push_user_display_name, msg["sender"])
+    push_title = f"📩 پیام از {sender_name}"
+    push_body = msg.get("message") or "📎 فایل جدید"
+    asyncio.create_task(send_push_to_user(msg["receiver"], push_title, push_body, "/"))
     await send_to(msg["sender"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["sender"])})
     await send_to(msg["receiver"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["receiver"])})
     await send_to(msg["receiver"], {"type":"unread","unread":await asyncio.to_thread(get_unread_counts,msg["receiver"])})
@@ -1879,6 +1933,29 @@ async def api_mark_read(
     except Exception as error:
         print("Mark direct read error:", repr(error))
         return {"success": False, "message": "علامت‌گذاری پیام‌ها ناموفق بود."}
+
+
+@app.post("/api/delete-conversation")
+async def api_delete_conversation(
+    username: str = Form(...),
+    token: str = Form(...),
+    other_username: str = Form(...),
+):
+    if not verify_token(username, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    other_username = (other_username or "").strip()
+    if not other_username or other_username == username:
+        return {"success": False, "message": "گفتگوی نامعتبر است."}
+    if not await asyncio.to_thread(user_exists, other_username):
+        return {"success": False, "message": "این کاربر وجود ندارد."}
+    try:
+        await asyncio.to_thread(hide_conversation, username, other_username)
+        users = await asyncio.to_thread(get_recent_chat_users, username)
+        await send_to(username, {"type":"recent-users", "users":users})
+        return {"success": True, "users": users}
+    except Exception as error:
+        print("Delete conversation error:", repr(error))
+        return {"success": False, "message": "حذف گفتگو ناموفق بود."}
 
 
 @app.get("/api/history")

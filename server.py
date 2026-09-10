@@ -1517,56 +1517,13 @@ def _normalize_ice_servers(value):
 
 
 def get_rtc_ice_servers():
-    global _rtc_config_cache, _rtc_config_cache_until
-    now = time.time()
-    if _rtc_config_cache is not None and now < _rtc_config_cache_until:
-        return _rtc_config_cache
-
-    # Cloudflare STUN + Google STUN as free direct-path discovery fallbacks.
-    servers = [
+    # Keep the no-TURN path fast and deterministic.  We intentionally do not
+    # contact any external TURN credentials endpoint here.  A slow provider
+    # must never block /api/rtc-config or prevent a call from starting.
+    return [
         {"urls": "stun:stun.cloudflare.com:3478"},
         {"urls": "stun:stun.l.google.com:19302"},
     ]
-
-    # Easiest Render setup: comma-separated TURN urls + username/password.
-    if TURN_URLS and TURN_USERNAME and TURN_CREDENTIAL:
-        servers.append({
-            "urls": TURN_URLS if len(TURN_URLS) > 1 else TURN_URLS[0],
-            "username": TURN_USERNAME,
-            "credential": TURN_CREDENTIAL,
-        })
-
-    # Alternative: paste the exact ICE server array supplied by a TURN provider.
-    if TURN_ICE_SERVERS_JSON:
-        try:
-            servers.extend(_normalize_ice_servers(json.loads(TURN_ICE_SERVERS_JSON)))
-        except Exception as error:
-            print("Invalid TURN_ICE_SERVERS_JSON:", error)
-
-    # Optional provider endpoint (for short-lived credentials). Keep the API key
-    # or secret in Render, never in the browser source.
-    if TURN_CREDENTIALS_URL:
-        try:
-            response = requests.get(TURN_CREDENTIALS_URL, timeout=8)
-            if response.ok:
-                servers.extend(_normalize_ice_servers(response.json()))
-            else:
-                print("TURN credentials endpoint status:", response.status_code)
-        except Exception as error:
-            print("TURN credentials fetch error:", error)
-
-    # Remove exact duplicates while preserving order.
-    unique = []
-    seen = set()
-    for item in servers:
-        key = json.dumps(item, sort_keys=True, separators=(",", ":"))
-        if key not in seen:
-            seen.add(key)
-            unique.append(item)
-
-    _rtc_config_cache = unique
-    _rtc_config_cache_until = now + RTC_CONFIG_CACHE_TTL
-    return unique
 
 
 def _push_one(subscription_obj, title, body, url):
@@ -2124,16 +2081,26 @@ async def chat(websocket: WebSocket, username: str, token: str):
                 continue
 
             if action == "call-offer":
-                receiver = data.get("to")
+                receiver = (data.get("to") or "").strip()
+                call_id = data.get("call_id") or str(uuid.uuid4())
+                if not receiver or not data.get("offer"):
+                    await websocket.send_json({
+                        "type": "call-error",
+                        "call_id": call_id,
+                        "message": "اطلاعات شروع تماس ناقص است.",
+                    })
+                    continue
                 ok = await send_call_signal(receiver, {
                     "type": "call-offer",
                     "from": username,
                     "offer": data.get("offer"),
                     "mode": data.get("mode", "audio"),
+                    "call_id": call_id,
                 })
                 if not ok:
                     await websocket.send_json({
                         "type": "call-error",
+                        "call_id": call_id,
                         "message": "کاربر مورد نظر آنلاین نیست.",
                     })
                 continue

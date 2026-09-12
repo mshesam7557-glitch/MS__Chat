@@ -97,59 +97,14 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 #sendArea{min-width:0;}
 #message{min-width:0;}
 </style>
-<style id="rememberFix">#login .rememberRow{box-sizing:border-box}#loginMessage:empty{display:none}#loginMessage{min-height:22px;margin:10px 0 0;line-height:1.6}<style id="rememberUiFix">
-#login .rememberRow{
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:flex-start;
-  gap:10px;
-  margin:12px 0 6px;
-  padding:10px 12px;
-  border:1px solid #e1e4ee;
-  border-radius:11px;
-  background:#f7f8fc;
-  text-align:right;
-  cursor:pointer;
-  direction:rtl;
-}
-#login .rememberRow input#rememberMe{
-  appearance:auto;
-  -webkit-appearance:checkbox;
-  width:18px!important;
-  min-width:18px!important;
-  max-width:18px!important;
-  height:18px!important;
-  min-height:18px!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  flex:0 0 18px!important;
-  accent-color:#4e62dd;
-  cursor:pointer;
-}
-#login .rememberRow span{
-  flex:1 1 auto;
-  width:auto!important;
-  margin:0!important;
-  padding:0!important;
-  font-size:13px;
-  line-height:1.5;
-  cursor:pointer;
-}
-#chatHeader>.callBtn,
-#chatHeader>#callButton,
-#chatHeader>#videoButton,
-#chatHeader>#hangupButton{display:none!important}
-#chatHeader .chatSub:empty{display:none}
-</style>
+<style id="rememberFix">#login .rememberRow{box-sizing:border-box}#loginMessage:empty{display:none}#loginMessage{min-height:22px;margin:10px 0 0;line-height:1.6}</style>
 </head>
 <body>
 <div id="login">
 <h1>💬 MS Chat</h1><h3 id="authTitle">ورود به حساب</h3>
 <input id="username" placeholder="نام کاربری" autocomplete="username">
 <input id="password" type="password" placeholder="رمز عبور" autocomplete="current-password">
-<label class="rememberRow" for="rememberMe"><input id="rememberMe" type="checkbox"><span>مرا به خاطر بسپار</span></label>
+<label class="rememberRow"><input id="rememberMe" type="checkbox"> <span>مرا به خاطر بسپار</span></label>
 <button onclick="authAction()">ورود</button>
 <p id="switchMode" onclick="switchAuthMode()">حساب ندارم؛ ثبت‌نام کنم</p><p id="loginMessage"></p>
 </div>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -136,6 +136,72 @@ body.msTheme-winter #login>button,body.msTheme-winter .primary{background:linear
 .fontChoice.active{border-color:#5b62ff;box-shadow:0 0 0 3px rgba(91,98,255,.12);background:#f7f8ff}
 .fontName{font-weight:700;display:block;font-size:12px;margin-top:5px;opacity:.58;font-family:Tahoma,sans-serif}
 @media(max-width:760px){.fontChoiceGrid{grid-template-columns:1fr 1fr}.fontChoice{font-size:15px;padding:10px 8px}}
+</style>
+
+
+<style id="msAnimatedV6">
+:root{--ms-ease:cubic-bezier(.22,.8,.24,1);--ms-spring:cubic-bezier(.16,1.2,.3,1)}
+*{scroll-behavior:smooth}
+body{transition:background-image .7s var(--ms-ease),background-color .5s ease}
+#app,#login,.popup,.popupCard,#sidebar,#chatArea,#chatHeader,#sendArea{animation:msFadeUp .55s var(--ms-ease) both}
+#login{animation-delay:.04s}
+#sidebar{animation-delay:.08s}
+#chatArea{animation-delay:.12s}
+#chatHeader{animation-delay:.16s}
+@keyframes msFadeUp{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes msPop{0%{opacity:0;transform:scale(.82)}65%{transform:scale(1.04)}100%{opacity:1;transform:scale(1)}}
+@keyframes msSlideIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@keyframes msSlideInLeft{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+@keyframes msPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes msGlow{0%,100%{box-shadow:0 0 0 rgba(95,115,255,0)}50%{box-shadow:0 0 22px rgba(95,115,255,.28)}}
+@keyframes msTyping{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+@keyframes msShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+@keyframes msSend{0%{transform:scale(.8) translateY(8px);opacity:0}60%{transform:scale(1.06) translateY(-2px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+.message{animation:msSend .34s var(--ms-spring) both;transform-origin:bottom right;transition:transform .22s var(--ms-ease),box-shadow .22s ease,filter .22s ease}
+.message.theirs{transform-origin:bottom left}
+.message:hover{transform:translateY(-3px) scale(1.008)!important;filter:saturate(1.04);box-shadow:0 10px 25px rgba(0,0,0,.11)!important}
+.message.mine{animation-name:msSend}
+.message.theirs{animation-name:msSlideInLeft}
+.msgImage,.audioMessage,.musicMessage{transition:transform .28s var(--ms-spring),filter .28s ease,box-shadow .28s ease}
+.msgImage:hover,.audioMessage:hover,.musicMessage:hover{transform:scale(1.025);filter:brightness(1.04);box-shadow:0 10px 25px rgba(0,0,0,.12)}
+button,.sideBtn,.themeChoice,.fontChoice{transition:transform .18s var(--ms-spring),box-shadow .22s ease,filter .22s ease,background .22s ease!important}
+button:hover,.sideBtn:hover,.themeChoice:hover,.fontChoice:hover{transform:translateY(-2px);filter:brightness(1.03)}
+button:active,.sideBtn:active,.themeChoice:active,.fontChoice:active{transform:scale(.94)!important}
+#sendButton:not(:disabled),#recordButton:not(:disabled),#imageButton:not(:disabled),#musicInput:not(:disabled),#stickerButton:not(:disabled),#actionButton:not(:disabled){animation:msGlow 2.8s ease-in-out infinite}
+#sendButton:not(:disabled):hover{animation:none;box-shadow:0 8px 25px rgba(70,90,220,.3)}
+.avatar{transition:transform .35s var(--ms-spring),box-shadow .3s ease,filter .3s ease}
+.avatar:hover{transform:scale(1.09) rotate(2deg);box-shadow:0 8px 20px rgba(0,0,0,.18);filter:saturate(1.08)}
+#chatHeader .avatar{animation:msPop .5s var(--ms-spring) both}
+#chatHeader .chatTitle{animation:msSlideIn .42s var(--ms-ease) both}
+#chatHeader .chatStatus{animation:msSlideIn .5s var(--ms-ease) .06s both}
+.sideBtn{position:relative;overflow:hidden}
+.sideBtn::after,#sendButton::after,button.primary::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.35) 48%,transparent 70%);transform:translateX(-120%);transition:transform .55s ease;pointer-events:none}
+.sideBtn:hover::after,#sendButton:hover::after,button.primary:hover::after{transform:translateX(120%)}
+#messages{scrollbar-width:thin}
+#messages::-webkit-scrollbar{width:7px}#messages::-webkit-scrollbar-thumb{border-radius:20px;background:rgba(80,90,140,.28);transition:background .2s}#messages::-webkit-scrollbar-thumb:hover{background:rgba(80,90,140,.5)}
+#typingIndicator.show{animation:msFadeUp .25s ease both}
+#typingIndicator .dot,#typingIndicator span.dot{animation:msTyping 1.1s ease-in-out infinite}
+#typingIndicator .dot:nth-child(2){animation-delay:.15s}.typingIndicator .dot:nth-child(3){animation-delay:.3s}
+.unreadBadge,.badge,.groupReadHint{animation:msPulse 1.8s ease-in-out infinite}
+.popup{backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.popup.show .popupCard,.popup[style*="display: flex"] .popupCard{animation:msPop .34s var(--ms-spring) both}
+.themeChoice,.fontChoice{animation:msFadeUp .35s var(--ms-ease) both}
+.themeChoice:nth-child(2),.fontChoice:nth-child(2){animation-delay:.04s}.themeChoice:nth-child(3),.fontChoice:nth-child(3){animation-delay:.08s}.themeChoice:nth-child(4),.fontChoice:nth-child(4){animation-delay:.12s}.themeChoice:nth-child(5),.fontChoice:nth-child(5){animation-delay:.16s}.themeChoice:nth-child(6){animation-delay:.2s}.themeChoice:nth-child(7){animation-delay:.24s}.themeChoice:nth-child(8){animation-delay:.28s}
+.themeChoice.active,.fontChoice.active{transform:translateY(-2px) scale(1.02);animation:msGlow 2s ease-in-out infinite}
+#message:focus{border-color:#7484ff;box-shadow:0 0 0 3px rgba(116,132,255,.13);transition:.22s ease}
+#message{transition:border-color .22s ease,box-shadow .22s ease,transform .22s var(--ms-ease)}
+#message:focus{transform:translateY(-1px)}
+input,textarea,select{transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
+#login button,#register button{animation:msFadeUp .45s var(--ms-ease) .18s both}
+#login input,#register input{animation:msFadeUp .4s var(--ms-ease) both}
+#login input:nth-of-type(2),#register input:nth-of-type(2){animation-delay:.05s}
+#login input:nth-of-type(3),#register input:nth-of-type(3){animation-delay:.1s}
+.toast,.notification,.alertBox{animation:msPop .32s var(--ms-spring) both}
+.loading,.spinner{animation:msPulse 1s ease-in-out infinite}
+.callBtn.calling{animation:msPulse 1.1s ease-in-out infinite,msGlow 1.8s ease-in-out infinite}
+.successMessage{animation:msPop .35s var(--ms-spring) both}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 
 </head>
@@ -1271,6 +1337,19 @@ ensureSavedButton();ensureSavedChatPanel();
   const oldLogout=window.logout;
   window.logout=function(){try{document.body.style.backgroundImage='';cleanThemeClass();document.body.className=document.body.className.replace(/\bfont-(?:lalezar|vazirmatn|estedad|markazi|noto)\b/g,'').trim()}catch{}return oldLogout?.apply(this,arguments)};
   setTimeout(()=>{ensureThemeButton();if(typeof currentUsername!=='undefined'&&currentUsername)applyThemeState()},250);
+})();
+</script>
+
+
+<script id="msAnimatedV6JS">
+(()=>{
+  const $=s=>document.querySelector(s);
+  function flash(el){if(!el)return;el.classList.remove('ms-click-flash');void el.offsetWidth;el.classList.add('ms-click-flash');}
+  document.addEventListener('click',e=>{const b=e.target.closest('button,.sideBtn,.themeChoice,.fontChoice');if(b&&!b.disabled)flash(b)});
+  const style=document.createElement('style');style.textContent='.ms-click-flash{animation:msClickFlash .28s ease!important}@keyframes msClickFlash{0%{filter:brightness(1)}45%{filter:brightness(1.22)}100%{filter:brightness(1)}}';document.head.appendChild(style);
+  const observer=new MutationObserver(muts=>{for(const m of muts){for(const n of m.addedNodes){if(n.nodeType===1&&n.classList?.contains('message')){n.style.animationDelay='0ms';}}}});
+  const box=$('#messages');if(box)observer.observe(box,{childList:true});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){document.querySelectorAll('.popup.show').forEach(p=>p.classList.remove('show'));}});
 })();
 </script>
 

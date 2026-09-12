@@ -10,9 +10,9 @@
 <meta name="apple-mobile-web-app-title" content="MS Chat">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/background.png">
-<title>MS Chat</title>
+<title>MS__Chat</title>
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Lalezar&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lalezar&family=Estedad:wght@300;400;500;600;700&family=Vazirmatn:wght@300;400;500;600;700&family=Markazi+Text:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap");
 *{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Arial,Tahoma,sans-serif}
 body{min-height:100vh;background:linear-gradient(rgba(6,14,50,.28),rgba(18,8,60,.3)),url("background.png") center/cover;color:#111}
 button,input{font:inherit}button{cursor:pointer}
@@ -62,7 +62,7 @@ button,input{font:inherit}button{cursor:pointer}
 <style id="mschatUltimateStyles">
 #musicInput,#imageInput{display:none!important}
 #sendArea{min-height:66px!important}#message{min-height:44px!important;font-size:15px!important}
-#chatHeader>#callButton,#chatHeader>#videoButton,#chatHeader>#hangupButton{display:none!important}
+#chatHeader>.callBtn{display:none!important}
 .msg-loading{display:inline-flex;align-items:center;gap:8px;opacity:.72}.miniSpinner{width:16px;height:16px;border:2px solid #ccd2ff;border-top-color:#4e62dd;border-radius:50%;animation:msSpin .7s linear infinite}@keyframes msSpin{to{transform:rotate(360deg)}}
 .message{animation:msMsgIn .22s ease both}.message:hover{transform:translateY(-1px);transition:transform .16s ease,box-shadow .16s ease;box-shadow:0 5px 16px rgba(0,0,0,.08)}
 button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,box-shadow .12s ease,background .15s ease}.msClick{animation:msClick .18s ease}@keyframes msClick{50%{transform:scale(.96)}}@keyframes msMsgIn{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
@@ -98,34 +98,46 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 #message{min-width:0;}
 </style>
 <style id="rememberFix">#login .rememberRow{box-sizing:border-box}#loginMessage:empty{display:none}#loginMessage{min-height:22px;margin:10px 0 0;line-height:1.6}</style>
-<style id="themeSystemStyles">
-:root{--ms-accent:#3575ff;--ms-accent2:#6847e8;--ms-bg-overlay1:rgba(6,14,50,.28);--ms-bg-overlay2:rgba(18,8,60,.30);--ms-side:rgba(255,255,255,.82);--ms-chat:rgba(255,255,255,.13);--ms-panel:rgba(255,255,255,.78);}
-body{background:linear-gradient(var(--ms-bg-overlay1),var(--ms-bg-overlay2)),url("background.png") center/cover fixed;color:var(--ms-text,#111);transition:background .35s ease,color .25s ease}
-#login,#sidebar,#chatHeader,#sendArea,.glass{transition:background .3s ease,box-shadow .3s ease}
-#login>button{background:linear-gradient(135deg,var(--ms-accent),var(--ms-accent2))}
-.sideBtn:hover,.userItem:hover,.groupItem:hover{transform:translateY(-1px)}
-.themeGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:10px 0 15px}
-.themeChoice{border:1px solid #dfe2ee;border-radius:13px;padding:12px;text-align:right;background:#fff;cursor:pointer;min-height:74px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
-.themeChoice:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.09)}
-.themeChoice.active{border:2px solid var(--ms-accent);padding:11px;box-shadow:0 8px 22px rgba(0,0,0,.10)}
-.themeChoice b{display:block;margin-bottom:4px}.themePreview{height:12px;border-radius:999px;margin-top:8px}
-.themeChoice[data-theme="light"] .themePreview{background:linear-gradient(90deg,#eef3ff,#ffffff)}
-.themeChoice[data-theme="dark"] .themePreview{background:linear-gradient(90deg,#121827,#27314a)}
-.themeChoice[data-theme="neon"] .themePreview{background:linear-gradient(90deg,#00c6ff,#ff4ecd)}
-.themeChoice[data-theme="sunset"] .themePreview{background:linear-gradient(90deg,#ff8a65,#7c4dff)}
-.themeChoice[data-theme="forest"] .themePreview{background:linear-gradient(90deg,#2e7d32,#8bc34a)}
-.themeChoice[data-theme="ocean"] .themePreview{background:linear-gradient(90deg,#0288d1,#80deea)}
-.themeChoice[data-theme="midnight"] .themePreview{background:linear-gradient(90deg,#172033,#5c6bc0)}
-body.theme-light{--ms-text:#152033;--ms-accent:#3976ff;--ms-accent2:#6b58e8;--ms-bg-overlay1:rgba(240,245,255,.2);--ms-bg-overlay2:rgba(255,255,255,.2)}
-body.theme-light #sidebar,body.theme-light #chatHeader,body.theme-light #sendArea,body.theme-light #login{background:rgba(255,255,255,.92)}
-body.theme-dark{--ms-text:#f3f6ff;--ms-accent:#7aa2ff;--ms-accent2:#9b7cff;--ms-bg-overlay1:rgba(5,8,18,.78);--ms-bg-overlay2:rgba(20,12,48,.82);background-image:radial-gradient(circle at 15% 20%,rgba(73,92,255,.28),transparent 32%),radial-gradient(circle at 85% 75%,rgba(180,70,255,.22),transparent 34%),linear-gradient(135deg,#0b1020,#1a1431 48%,#070a14)!important;background-size:cover;background-attachment:fixed}
-body.theme-dark #sidebar,body.theme-dark #chatHeader,body.theme-dark #sendArea{background:rgba(14,19,33,.88);color:#f3f6ff}body.theme-dark .userItem,body.theme-dark .groupItem,body.theme-dark .searchItem,body.theme-dark .popupCard{background:#1b2233;color:#f3f6ff;border-color:#303a50}body.theme-dark #messages{background:rgba(8,12,22,.22)}body.theme-dark .theirs{background:#20283a;color:#f3f6ff;border-color:#303a50}body.theme-dark #message{background:#121927;color:#fff;border-color:#34405a}body.theme-dark .actionMenu,body.theme-dark .stickerPanel{background:#1b2233;color:#fff;border-color:#303a50}
-body.theme-neon{--ms-text:#f4f6ff;--ms-accent:#00c6ff;--ms-accent2:#ff4ecd;--ms-bg-overlay1:rgba(7,8,28,.4);--ms-bg-overlay2:rgba(33,7,45,.42);background-image:radial-gradient(circle at 20% 25%,rgba(0,198,255,.35),transparent 28%),radial-gradient(circle at 80% 20%,rgba(255,78,205,.35),transparent 30%),radial-gradient(circle at 60% 85%,rgba(140,60,255,.26),transparent 35%),linear-gradient(135deg,#080b20,#140a22 55%,#071a2d)!important;background-size:cover;background-attachment:fixed}body.theme-neon #sidebar,body.theme-neon #chatHeader,body.theme-neon #sendArea{background:rgba(15,13,36,.84);color:#fff;box-shadow:0 0 24px rgba(0,198,255,.08)}body.theme-neon .userItem,body.theme-neon .groupItem{background:rgba(25,22,54,.8);color:#fff;border-color:rgba(255,78,205,.24)}
-body.theme-sunset{--ms-accent:#ff7a59;--ms-accent2:#8b5cf6;--ms-bg-overlay1:rgba(65,25,30,.08);--ms-bg-overlay2:rgba(69,28,88,.1);background-image:linear-gradient(145deg,#ffb36b 0%,#ff7a59 26%,#d85b92 52%,#7954c8 78%,#30245e 100%)!important;background-size:cover;background-attachment:fixed}
-body.theme-forest{--ms-accent:#318b4a;--ms-accent2:#74b816;--ms-bg-overlay1:rgba(10,42,20,.1);--ms-bg-overlay2:rgba(25,55,30,.1);background-image:radial-gradient(circle at 15% 20%,rgba(106,180,95,.22),transparent 25%),radial-gradient(circle at 85% 40%,rgba(65,130,80,.2),transparent 30%),linear-gradient(135deg,#0d2417,#173b24 46%,#07150d)!important;background-size:cover;background-attachment:fixed}
-body.theme-ocean{--ms-accent:#0086c7;--ms-accent2:#17b8c8;--ms-bg-overlay1:rgba(3,34,55,.1);--ms-bg-overlay2:rgba(3,67,87,.1);background-image:radial-gradient(circle at 18% 24%,rgba(86,220,255,.25),transparent 28%),radial-gradient(circle at 82% 72%,rgba(0,134,199,.24),transparent 34%),linear-gradient(135deg,#032638,#075b76 48%,#02121f)!important;background-size:cover;background-attachment:fixed}
-body.theme-midnight{--ms-accent:#667eea;--ms-accent2:#764ba2;--ms-bg-overlay1:rgba(7,10,24,.1);--ms-bg-overlay2:rgba(31,18,55,.1);background-image:radial-gradient(circle at 25% 18%,rgba(102,126,234,.22),transparent 27%),radial-gradient(circle at 78% 78%,rgba(118,75,162,.22),transparent 30%),linear-gradient(135deg,#090d1b,#171126 50%,#05070f)!important;background-size:cover;background-attachment:fixed}
+
+<style id="mschat-theme-system">
+#themeButton{position:relative}
+#themePopup .popupCard{width:min(760px,96vw);max-height:90vh;overflow:auto}
+.themeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0 16px}
+.themeChoice{position:relative;border:2px solid transparent;border-radius:14px;overflow:hidden;cursor:pointer;background:#111;min-height:145px;padding:0;text-align:right;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.themeChoice:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.16)}
+.themeChoice.active{border-color:#5c62ff;box-shadow:0 0 0 3px rgba(92,98,255,.15)}
+.themeChoice img{width:100%;height:145px;display:block;object-fit:cover}
+.themeChoiceLabel{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.58);color:#fff;padding:5px 9px;border-radius:999px;font-size:12px;backdrop-filter:blur(5px)}
+.themeCustomRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.themeCustomRow input[type=file]{display:none}
+#customThemeButton{background:#eef1ff;border:0;border-radius:10px;padding:10px 12px;cursor:pointer}
+.themeHint{font-size:11px;opacity:.7;margin:4px 0 12px}
+body.msTheme-neon{--theme-accent:#ff2ad6} body.msTheme-forest{--theme-accent:#43b86b} body.msTheme-sunset{--theme-accent:#ef7b34} body.msTheme-ocean{--theme-accent:#18bcd1} body.msTheme-galaxy{--theme-accent:#9a6cff} body.msTheme-city{--theme-accent:#4ea1ff} body.msTheme-winter{--theme-accent:#8db7ff} body.msTheme-default{--theme-accent:#5575ff}
+body.msTheme-neon #login>button,body.msTheme-neon .primary{background:linear-gradient(135deg,#ff2ad6,#6b39ff)!important}
+body.msTheme-forest #login>button,body.msTheme-forest .primary{background:linear-gradient(135deg,#31995b,#14765b)!important}
+body.msTheme-sunset #login>button,body.msTheme-sunset .primary{background:linear-gradient(135deg,#ef7b34,#b83c68)!important}
+body.msTheme-ocean #login>button,body.msTheme-ocean .primary{background:linear-gradient(135deg,#19b9d2,#1667b4)!important}
+body.msTheme-galaxy #login>button,body.msTheme-galaxy .primary{background:linear-gradient(135deg,#9a6cff,#4d58d6)!important}
+body.msTheme-city #login>button,body.msTheme-city .primary{background:linear-gradient(135deg,#4ea1ff,#3158d8)!important}
+body.msTheme-winter #login>button,body.msTheme-winter .primary{background:linear-gradient(135deg,#6b9af7,#5e71cb)!important}
+@media(max-width:760px){.themeGrid{grid-template-columns:1fr}.themeChoice,.themeChoice img{min-height:128px;height:128px}}
 </style>
+
+
+<style id="mschat-theme-v4-css">
+.font-lalezar .messageText,.font-lalezar .replyQuote,.font-lalezar .messageHeader,.font-lalezar .forwardedBadge,.font-lalezar .savedOrigin,.font-lalezar .messageFooter{font-family:"Lalezar",Tahoma,sans-serif!important}
+.font-vazirmatn .messageText,.font-vazirmatn .replyQuote,.font-vazirmatn .messageHeader,.font-vazirmatn .forwardedBadge,.font-vazirmatn .savedOrigin,.font-vazirmatn .messageFooter{font-family:"Vazirmatn",Tahoma,sans-serif!important}
+.font-estedad .messageText,.font-estedad .replyQuote,.font-estedad .messageHeader,.font-estedad .forwardedBadge,.font-estedad .savedOrigin,.font-estedad .messageFooter{font-family:"Estedad",Tahoma,sans-serif!important}
+.font-markazi .messageText,.font-markazi .replyQuote,.font-markazi .messageHeader,.font-markazi .forwardedBadge,.font-markazi .savedOrigin,.font-markazi .messageFooter{font-family:"Markazi Text",Tahoma,sans-serif!important;font-size:1.08em}
+.font-noto .messageText,.font-noto .replyQuote,.font-noto .messageHeader,.font-noto .forwardedBadge,.font-noto .savedOrigin,.font-noto .messageFooter{font-family:"Noto Sans Arabic",Tahoma,sans-serif!important}
+.fontChoiceGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 16px}
+.fontChoice{padding:12px 10px;border:2px solid #e2e5ef;border-radius:12px;background:#fff;text-align:right;cursor:pointer;transition:.16s ease;font-size:17px}
+.fontChoice:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(0,0,0,.08)}
+.fontChoice.active{border-color:#5b62ff;box-shadow:0 0 0 3px rgba(91,98,255,.12);background:#f7f8ff}
+.fontName{font-weight:700;display:block;font-size:12px;margin-top:5px;opacity:.58;font-family:Tahoma,sans-serif}
+@media(max-width:760px){.fontChoiceGrid{grid-template-columns:1fr 1fr}.fontChoice{font-size:15px;padding:10px 8px}}
+</style>
+
 </head>
 <body>
 <div id="login">
@@ -146,7 +158,7 @@ body.theme-midnight{--ms-accent:#667eea;--ms-accent2:#764ba2;--ms-bg-overlay1:rg
 <button class="sideBtn" onclick="openProfile()">👤 پروفایل</button>
 <button class="sideBtn" onclick="openChangePassword()">🔐 تغییر رمز</button>
 <button class="sideBtn" onclick="openGroupPopup()">👥 ساخت گروه</button>
-<button class="sideBtn" id="pushButton" onclick="togglePushNotifications()">🔔 فعال‌کردن اعلان موبایل</button><button class="sideBtn" id="themeButton" onclick="openThemeSettings()">🎨 ظاهر و تم</button>
+<button class="sideBtn" id="pushButton" onclick="togglePushNotifications()">🔔 فعال‌کردن اعلان موبایل</button>
 <button class="sideBtn hidden" id="adminButton" onclick="openAdminPopup()">👑 مدیریت کاربران</button><button class="sideBtn hidden" id="reportsButton" onclick="openReportsPopup()">🚩 گزارش‌ها</button>
 <button class="sideBtn" onclick="logout()">🚪 خروج</button>
 <hr>
@@ -185,16 +197,6 @@ body.theme-midnight{--ms-accent:#667eea;--ms-accent2:#764ba2;--ms-bg-overlay1:rg
 <button class="primary" onclick="sendMessage()" id="sendButton" disabled>ارسال</button>
 </div>
 </main></div>
-
-<div id="themePopup" class="popup"><div class="popupCard">
-<h3>🎨 ظاهر و تم</h3>
-<p class="muted">این انتخاب فقط برای همین اکانت و همین دستگاه ذخیره می‌شود.</p>
-<div class="themeGrid" id="themeGrid"></div>
-<div class="sectionTitle">🖼️ پس‌زمینه دلخواه</div>
-<input id="customThemeBg" type="file" accept="image/*">
-<div class="row"><button onclick="applyCustomBackground()">اعمال پس‌زمینه</button><button class="danger" onclick="resetCustomBackground()">حذف پس‌زمینه دلخواه</button></div>
-<button onclick="closePopup('themePopup')">بستن</button>
-</div></div>
 
 <div id="profilePopup" class="popup"><div class="popupCard">
 <h3>👤 پروفایل</h3><img id="avatarPreview" alt="">
@@ -303,8 +305,7 @@ function normalizeSessionDescription(desc){
 function newCallId(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 function clearCallTimer(){if(callTimer){clearTimeout(callTimer);callTimer=null}}
 
-function qs(id){return document.getElementById(id)}function installButtonAnimations(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;b.classList.remove("msClick");void b.offsetWidth;b.classList.add("msClick")})}
-installButtonAnimations();
+function qs(id){return document.getElementById(id)}
 function openPopup(id){qs(id).style.display="flex"} function closePopup(id){qs(id).style.display="none"}
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function initials(name){return (name||"?").trim().slice(0,1)}
@@ -389,17 +390,6 @@ async function disablePushNotifications(){
 }
 function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4);const raw=atob((base64String+padding).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 
-const THEME_KEY_PREFIX="mschat_theme_v2:";
-const THEME_NAMES={default:"🌙 پیش‌فرض MS__Chat",light:"☀️ روشن",dark:"🌑 تاریک",neon:"⚡ نئون",sunset:"🌅 غروب",forest:"🌲 جنگلی",ocean:"🌊 اقیانوس",midnight:"🖤 نیمه‌شب"};
-function themeStorageKey(){return THEME_KEY_PREFIX+(currentUsername||"guest");}
-function getThemePrefs(){try{return JSON.parse(localStorage.getItem(themeStorageKey())||"null")||{theme:"default",bg:""}}catch{return {theme:"default",bg:""}}}
-function saveThemePrefs(p){try{localStorage.setItem(themeStorageKey(),JSON.stringify(p))}catch{}}
-function applyTheme(theme,bgOverride){const body=document.body;body.classList.remove("theme-light","theme-dark","theme-neon","theme-sunset","theme-forest","theme-ocean","theme-midnight");const selected=theme||"default";if(selected!=="default")body.classList.add("theme-"+selected);const p=getThemePrefs();const bg=bgOverride!==undefined?bgOverride:(p.bg||"");if(bg){body.style.backgroundImage=`linear-gradient(var(--ms-bg-overlay1),var(--ms-bg-overlay2)),url(${JSON.stringify(bg)})`;}else if(selected==="default"||selected==="light"){body.style.backgroundImage=selected==="default"?`linear-gradient(rgba(6,14,50,.28),rgba(18,8,60,.3)),url("background.png")`:"";}else{body.style.backgroundImage="";}if(bgOverride!==undefined||theme!==undefined){p.bg=bg;p.theme=selected;saveThemePrefs(p)}}
-function renderThemeChoices(){const g=qs("themeGrid");if(!g)return;const active=getThemePrefs().theme||"default";g.innerHTML="";for(const [key,name] of Object.entries(THEME_NAMES)){const d=document.createElement("button");d.type="button";d.className="themeChoice";d.dataset.theme=key;if(key===active)d.classList.add("active");d.innerHTML=`<b>${name}</b><span class="muted">تغییر ظاهر فقط برای من</span><div class="themePreview"></div><span class="muted">برای انتخاب کلیک کن</span>`;d.onclick=()=>{const p=getThemePrefs();p.theme=key;saveThemePrefs(p);applyTheme(key,p.bg||"");renderThemeChoices()};g.appendChild(d)}}
-function openThemeSettings(){renderThemeChoices();openPopup("themePopup")}
-function applyCustomBackground(){const f=qs("customThemeBg")?.files?.[0];if(!f)return alert("اول یک تصویر انتخاب کن.");if(f.size>3*1024*1024)return alert("برای جلوگیری از سنگین شدن سایت، تصویر پس‌زمینه حداکثر 3MB باشد.");const r=new FileReader();r.onload=()=>{const p=getThemePrefs();p.bg=r.result;p.theme=p.theme||"default";saveThemePrefs(p);applyTheme(p.theme,p.bg);alert("✅ پس‌زمینه برای این دستگاه ذخیره شد.")};r.readAsDataURL(f)}
-function resetCustomBackground(){const p=getThemePrefs();p.bg="";saveThemePrefs(p);applyTheme(p.theme,"")}
-function applySavedTheme(){const p=getThemePrefs();applyTheme(p.theme,p.bg||"")}
 function switchAuthMode(){isRegisterMode=!isRegisterMode;qs("authTitle").textContent=isRegisterMode?"ساخت حساب جدید":"ورود به حساب";document.querySelector("#login>button").textContent=isRegisterMode?"ثبت‌نام":"ورود";qs("switchMode").textContent=isRegisterMode?"حساب دارم؛ وارد شوم":"حساب ندارم؛ ثبت‌نام کنم";qs("password").autocomplete=isRegisterMode?"new-password":"current-password";qs("loginMessage").textContent="";qs("loginMessage").classList.remove("successMessage")}
 async function authAction(){
  const username=qs("username").value.trim(),password=qs("password").value, msg=qs("loginMessage");if(!username||!password){msg.textContent="نام کاربری و رمز عبور را وارد کن.";return}
@@ -459,7 +449,7 @@ function startUsersRefresh(){
  if(usersRefreshTimer)clearInterval(usersRefreshTimer);
  usersRefreshTimer=setInterval(()=>{if(!document.hidden)refreshUsersDirect()},15000);
 }
-function openChat(){applySavedTheme();qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket();syncPushState()}
+function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket();syncPushState()}
 
 function updateSelectedPeerHeader(){
  if(selectedType!=="user"||!selectedUser)return;
@@ -1184,6 +1174,105 @@ ensureSavedButton();ensureSavedChatPanel();
 })();
 </script>
 <!-- /MSCHAT_SAVED_FORWARD_EXTENSION -->
+
+
+<div id="themePopup" class="popup"><div class="popupCard">
+<h3>🎨 ظاهر و تم MS__Chat</h3>
+<div class="themeHint">هر تم و فونت فقط روی همین اکانت و همین دستگاه ذخیره می‌شود.</div>
+<div class="themeHint"><b>🖼️ انتخاب تم</b></div>
+<div id="themeGrid" class="themeGrid"></div>
+<div class="themeCustomRow"><button id="customThemeButton" onclick="document.getElementById('customThemeInput').click()">🖼️ انتخاب پس‌زمینه دلخواه</button><input id="customThemeInput" type="file" accept="image/*" onchange="applyCustomThemeBackground(event)"><button onclick="resetCustomThemeBackground()">♻️ بازگردانی</button></div>
+<div class="themeHint" style="margin-top:16px"><b>✍️ فونت پیام‌ها</b></div>
+<div id="fontGrid" class="fontChoiceGrid"></div>
+<div class="themeHint">فونت پیش‌فرض: <b>Lalezar</b></div>
+<button onclick="closePopup('themePopup')">بستن</button>
+</div></div>
+
+<script id="mschat-theme-system-js">
+(function(){
+  const THEMES={
+    default:'/background.png',
+    neon:'/theme_neon.jpg',
+    forest:'/theme_forest.jpg',
+    sunset:'/theme_sunset.jpg',
+    ocean:'/theme_ocean.jpg',
+    galaxy:'/theme_galaxy.jpg',
+    city:'/theme_city.jpg',
+    winter:'/theme_winter.jpg'
+  };
+  const NAMES={default:'🌙 پیش‌فرض MS__Chat',neon:'⚡ نئون',forest:'🌲 جنگلی',sunset:'🌅 غروب',ocean:'🌊 اقیانوس',galaxy:'🌌 کهکشان',city:'🏙️ شهر شب',winter:'❄️ زمستان'};
+  const FONTS={
+    lalezar:{name:'Lalezar',label:'لاله‌زار',sample:'سلام! وقت بخیر 👋'},
+    vazirmatn:{name:'Vazirmatn',label:'وزیرمتن',sample:'سلام! خوانا و مرتب ✨'},
+    estedad:{name:'Estedad',label:'استعداد',sample:'سلام! مدرن و نرم 🌟'},
+    markazi:{name:'Markazi Text',label:'مرکزی',sample:'سلام! کمی فانتزی‌تر 🎨'},
+    noto:{name:'Noto Sans Arabic',label:'نوتو عربیک',sample:'سلام! ساده و حرفه‌ای 💬'}
+  };
+  const KEY='mschat_theme_settings_v4_';
+  function storageKey(){return KEY+((typeof currentUsername!=='undefined'&&currentUsername)||'guest')}
+  function getState(){try{return JSON.parse(localStorage.getItem(storageKey())||'{}')}catch{return {}}}
+  function saveState(s){try{localStorage.setItem(storageKey(),JSON.stringify(s))}catch(e){console.warn('theme save failed',e)}}
+  function ensureThemeButton(){
+    const side=document.querySelector('#sidebar .sideBtn[onclick="openGroupPopup()"]');
+    if(side&&!document.getElementById('themeButton')){
+      const b=document.createElement('button');b.id='themeButton';b.className='sideBtn';b.textContent='🎨 ظاهر و تم';b.onclick=()=>openThemePopup();side.insertAdjacentElement('afterend',b)
+    }
+  }
+  function buildThemeGrid(){
+    const g=document.getElementById('themeGrid');if(!g||g.children.length)return;
+    for(const [key,label] of Object.entries(NAMES)){
+      const b=document.createElement('button');b.className='themeChoice';b.dataset.theme=key;
+      b.innerHTML=`<img src="${THEMES[key]}" alt="${label}"><span class="themeChoiceLabel">${label}</span>`;
+      b.onclick=()=>applyTheme(key,true);g.appendChild(b);
+    }
+  }
+  function buildFontGrid(){
+    const g=document.getElementById('fontGrid');if(!g||g.children.length)return;
+    for(const [key,f] of Object.entries(FONTS)){
+      const b=document.createElement('button');b.className='fontChoice';b.dataset.font=key;
+      b.innerHTML=`${f.sample}<span class="fontName">${f.label}</span>`;
+      b.style.fontFamily=`"${f.name}",Tahoma,sans-serif`;
+      b.onclick=()=>applyFont(key,true);g.appendChild(b);
+    }
+  }
+  function cleanThemeClass(){document.body.className=document.body.className.replace(/\bmsTheme-\w+\b/g,'').trim()}
+  function applyThemeClass(key){cleanThemeClass();document.body.className=(document.body.className+' msTheme-'+key).trim()}
+  function applyTheme(key,save=true){
+    const bg=THEMES[key]||THEMES.default;
+    document.body.style.backgroundImage=`linear-gradient(rgba(6,14,50,.22),rgba(18,8,60,.24)),url("${bg}")`;
+    document.body.style.backgroundSize='cover';document.body.style.backgroundPosition='center';applyThemeClass(key);
+    if(save){const s=getState();s.theme=key;s.customBackground='';saveState(s)}
+    markActive();
+  }
+  function applyFont(key,save=true){
+    const safe=FONTS[key]?key:'lalezar';
+    document.body.className=document.body.className.replace(/\bfont-(?:lalezar|vazirmatn|estedad|markazi|noto)\b/g,'').trim()+` font-${safe}`;
+    if(save){const s=getState();s.font=safe;saveState(s)}
+    document.querySelectorAll('.fontChoice').forEach(b=>b.classList.toggle('active',b.dataset.font===safe));
+  }
+  function markActive(){
+    const s=getState();const key=s.theme||'default';document.querySelectorAll('.themeChoice').forEach(b=>b.classList.toggle('active',b.dataset.theme===key));
+    const font=s.font||'lalezar';document.querySelectorAll('.fontChoice').forEach(b=>b.classList.toggle('active',b.dataset.font===font));
+  }
+  window.applyCustomThemeBackground=function(e){
+    const f=e.target.files?.[0];if(!f)return;if(!f.type.startsWith('image/'))return alert('لطفاً یک تصویر انتخاب کن.');if(f.size>2*1024*1024)return alert('حجم تصویر بهتر است کمتر از 2MB باشد.');
+    const rd=new FileReader();rd.onload=()=>{const s=getState();s.theme='custom';s.customBackground=rd.result;saveState(s);applyThemeState()};rd.readAsDataURL(f);e.target.value='';
+  };
+  window.resetCustomThemeBackground=function(){const s=getState();delete s.customBackground;s.theme='default';saveState(s);applyThemeState()};
+  function applyThemeState(){
+    const s=getState();
+    if(s.customBackground){document.body.style.backgroundImage=`linear-gradient(rgba(6,14,50,.22),rgba(18,8,60,.24)),url("${s.customBackground}")`;document.body.style.backgroundSize='cover';document.body.style.backgroundPosition='center';applyThemeClass('custom')}
+    else applyTheme(s.theme||'default',false);
+    applyFont(s.font||'lalezar',false);markActive();ensureThemeButton();
+  }
+  window.openThemePopup=function(){buildThemeGrid();buildFontGrid();markActive();openPopup('themePopup')};
+  const oldOpenChat=window.openChat;
+  window.openChat=function(){oldOpenChat?.apply(this,arguments);setTimeout(()=>{ensureThemeButton();applyThemeState()},100)};
+  const oldLogout=window.logout;
+  window.logout=function(){try{document.body.style.backgroundImage='';cleanThemeClass();document.body.className=document.body.className.replace(/\bfont-(?:lalezar|vazirmatn|estedad|markazi|noto)\b/g,'').trim()}catch{}return oldLogout?.apply(this,arguments)};
+  setTimeout(()=>{ensureThemeButton();if(typeof currentUsername!=='undefined'&&currentUsername)applyThemeState()},250);
+})();
+</script>
 
 </body>
 </html>

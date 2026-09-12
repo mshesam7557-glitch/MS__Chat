@@ -1634,6 +1634,48 @@ async def upload_audio(
         return {"success": False, "message": "آپلود ویس ناموفق بود."}
 
 
+@app.post("/upload-music")
+async def upload_music(
+    sender: str = Form(...),
+    receiver: str = Form(...),
+    token: str = Form(...),
+    music: UploadFile = File(...),
+    reply_to: str = Form(""),
+):
+    if not verify_token(sender, token):
+        return {"success": False, "message": "احراز هویت ناموفق بود."}
+    if receiver.startswith("group:"):
+        try: gid=int(receiver.split(":",1)[1])
+        except (TypeError,ValueError): return {"success":False,"message":"گروه نامعتبر است."}
+        if not await asyncio.to_thread(is_group_member, gid, sender):
+            return {"success":False,"message":"شما عضو این گروه نیستید."}
+        group_id=gid; target_receiver=""
+    else:
+        group_id=None; target_receiver=(receiver or "").strip()
+        if not await asyncio.to_thread(user_exists,target_receiver):
+            return {"success":False,"message":"گیرنده وجود ندارد."}
+    content=await music.read()
+    if not content: return {"success":False,"message":"فایل موسیقی خالی است."}
+    if len(content)>5*1024*1024: return {"success":False,"message":"حجم موسیقی نباید بیشتر از ۵ مگابایت باشد."}
+    ctype=(music.content_type or "application/octet-stream").lower()
+    if not ctype.startswith("audio/"):
+        return {"success":False,"message":"فرمت فایل باید صوتی باشد."}
+    import mimetypes
+    ext=os.path.splitext(music.filename or "")[1].lower() or mimetypes.guess_extension(ctype) or ".bin"
+    path=f"music/{uuid.uuid4()}{ext}"
+    try:
+        await asyncio.to_thread(upload_storage,path,content,ctype)
+        display_name=(music.filename or "موسیقی").strip()[:160]
+        rid=int(reply_to) if reply_to else None
+        mid=await asyncio.to_thread(save_message,sender,target_receiver,display_name,"music",None,add_storage_prefix(path),rid,group_id)
+        msg=await asyncio.to_thread(get_message,mid,sender)
+        asyncio.create_task(deliver_message_safe(msg))
+        return {"success":True,"message":msg}
+    except Exception as error:
+        print("Music upload error:",repr(error))
+        return {"success":False,"message":"ارسال موسیقی ناموفق بود."}
+
+
 async def group_recipients(group_id, sender):
     with get_db() as connection:
         with connection.cursor() as cursor:
@@ -1774,7 +1816,7 @@ async def deliver_message(msg):
         sender_name = await asyncio.to_thread(get_push_user_display_name, msg["sender"])
         group_name = await asyncio.to_thread(get_push_group_name, msg["group_id"])
         push_title = f"👥 {group_name} • {sender_name}"
-        push_body = msg.get("message") or "📎 فایل جدید"
+        push_body = ("📞 تماس گروهی" if msg.get("message_type")=="group_call" else "🎵 موسیقی" if msg.get("message_type")=="music" else (msg.get("message") or "📎 فایل جدید"))
         for username in recipients:
             asyncio.create_task(send_push_to_user(username, push_title, push_body, "/"))
             asyncio.create_task(send_to(username, {
@@ -1799,7 +1841,7 @@ async def deliver_message(msg):
     await send_to(msg["sender"], {"type": "sent", "message": msg})
     sender_name = await asyncio.to_thread(get_push_user_display_name, msg["sender"])
     push_title = f"📩 پیام از {sender_name}"
-    push_body = msg.get("message") or "📎 فایل جدید"
+    push_body = ("🎵 موسیقی" if msg.get("message_type")=="music" else (msg.get("message") or "📎 فایل جدید"))
     asyncio.create_task(send_push_to_user(msg["receiver"], push_title, push_body, "/"))
     await send_to(msg["sender"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["sender"])})
     await send_to(msg["receiver"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["receiver"])})
@@ -2056,6 +2098,21 @@ async def delete_group(
     for u in members:
         await send_to(u, {"type": "group-deleted", "group_id": group_id})
     return {"success": True, "group_id": group_id}
+
+
+@app.post("/group-call/start")
+async def start_group_call(username: str = Form(...), token: str = Form(...), group_id: int = Form(...)):
+    if not verify_token(username, token):
+        return {"success":False,"message":"احراز هویت ناموفق بود."}
+    if not await asyncio.to_thread(is_group_member,group_id,username):
+        return {"success":False,"message":"شما عضو این گروه نیستید."}
+    sender_name=await asyncio.to_thread(_get_sender_display_name,username)
+    text=f"یک تماس گروهی از طرف {sender_name} ایجاد شد."
+    mid=await asyncio.to_thread(save_message,username,"",text,"group_call",None,None,None,group_id)
+    msg=await asyncio.to_thread(get_message,mid,username)
+    if msg:
+        asyncio.create_task(deliver_message_safe(msg))
+    return {"success":True,"message":msg}
 
 
 @app.post("/edit-message")
@@ -2834,7 +2891,7 @@ def _copy_media_for_forward(message):
         content=resp.content
         content_type=resp.headers.get("content-type", content_type)
 
-    if message.get("message_type")=="audio":
+    if message.get("message_type") in {"audio","music"}:
         ext=".webm"
         if not content_type or content_type=="application/octet-stream":
             content_type="audio/webm"
@@ -2969,7 +3026,7 @@ async def api_forward_message(
         # logic above keeps a media object as long as another message references it,
         # so forwarding stays fast and does not duplicate large voice/image files.
         media=source_row["media"] if source_row["message_type"]=="image" else None
-        audio=source_row["audio"] if source_row["message_type"]=="audio" else None
+        audio=source_row["audio"] if source_row["message_type"] in {"audio","music"} else None
         original_source_id=source_row.get("forwarded_from_message_id") or int(source_row["id"])
 
         receiver="" if target_kind=="group" else target_value

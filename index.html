@@ -58,7 +58,19 @@ button,input{font:inherit}button{cursor:pointer}
 #imageViewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:3500;align-items:center;justify-content:center;padding:20px}.fullImage{max-width:95vw;max-height:95vh;border-radius:10px}.membersList{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}.memberRow{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;background:#f4f5fb}.memberMeta{flex:1}.memberMeta small{display:block;opacity:.65}
 @media(max-width:760px){#chat{width:calc(100% - 10px);height:calc(100vh - 20px);min-height:0;margin:10px auto;border-radius:16px}#sidebar{width:35%;min-width:125px;padding:8px}#chatArea{width:65%}.sideBtn{font-size:11px}.message{max-width:88%;font-size:13px}.callBtn{padding:7px 8px;font-size:10px}.avatar{width:34px;height:34px;font-size:16px}.itemName{font-size:12px}.itemStatus{font-size:9px}#chatHeader{min-height:60px;padding:7px 9px}.chatTitle{font-size:13px}#sendArea{padding:7px}#sendArea button{padding:9px}.localVideo{width:120px;height:90px}}
  .rememberRow{display:flex;align-items:center;justify-content:flex-start;gap:7px;margin:6px 0 2px;font-size:12px;opacity:.85;cursor:pointer}.rememberRow input{width:auto;margin:0}.actionWrap{position:relative;display:inline-flex}.actionMenu{display:none;position:absolute;right:0;bottom:48px;min-width:190px;background:rgba(255,255,255,.98);border:1px solid #ddd;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:7px;z-index:1800}.actionMenu.show{display:flex;flex-direction:column;gap:5px}.actionMenu button{border:0;background:#f5f6fb;border-radius:9px;padding:9px;text-align:right;cursor:pointer}.actionMenu button:hover{background:#e8ebff}.musicMessage{width:min(320px,100%);margin-top:5px}.musicName{font-size:12px;margin-bottom:5px;word-break:break-word}.groupCallCard{padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#f2f5ff,#eefaf5);border:1px solid #dfe4ff}.groupCallCard b{display:block;margin-bottom:5px}.groupCallCard button{border:0;border-radius:9px;padding:7px 10px;cursor:pointer} .successMessage{color:#0a8f3d !important;font-weight:bold;}</style>
-</head>
+
+<style id="mschatUltimateStyles">
+#musicInput,#imageInput{display:none!important}
+#sendArea{min-height:66px!important}#message{min-height:44px!important;font-size:15px!important}
+#chatHeader>.callBtn{display:none!important}
+.msg-loading{display:inline-flex;align-items:center;gap:8px;opacity:.72}.miniSpinner{width:16px;height:16px;border:2px solid #ccd2ff;border-top-color:#4e62dd;border-radius:50%;animation:msSpin .7s linear infinite}@keyframes msSpin{to{transform:rotate(360deg)}}
+.message{animation:msMsgIn .22s ease both}.message:hover{transform:translateY(-1px);transition:transform .16s ease,box-shadow .16s ease;box-shadow:0 5px 16px rgba(0,0,0,.08)}
+button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,box-shadow .12s ease,background .15s ease}.msClick{animation:msClick .18s ease}@keyframes msClick{50%{transform:scale(.96)}}@keyframes msMsgIn{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
+#msLoader{display:none;position:fixed;inset:0;background:rgba(7,12,35,.18);backdrop-filter:blur(2px);z-index:5000;align-items:center;justify-content:center}.loaderCard{padding:18px 22px;border-radius:16px;background:rgba(255,255,255,.96);box-shadow:0 12px 34px rgba(0,0,0,.2);display:flex;gap:10px;align-items:center}.bigSpinner{width:26px;height:26px;border:3px solid #d9ddff;border-top-color:#4b5bdc;border-radius:50%;animation:msSpin .75s linear infinite}
+#profilePublicPopup .publicAvatar{width:120px;height:120px;border-radius:50%;object-fit:cover;background:#ddd;display:block;margin:5px auto 14px}.bioBox{padding:10px;border-radius:11px;background:#f4f5fb;min-height:55px;white-space:pre-wrap}.savedChatBadge{font-size:10px;opacity:.65;margin-bottom:4px}.saved-chat-message.mineSaved{margin-left:auto;background:#d8ffd2;border-bottom-right-radius:5px}.saved-chat-message.otherSaved{margin-right:auto;background:rgba(255,255,255,.96);border-bottom-left-radius:5px}.saved-chat-message .savedOrigin{font-size:11px;opacity:.72;margin-bottom:5px}.saved-chat-message .savedOpen{display:block;margin-top:6px}
+#reportList .reportCard{padding:10px;border:1px solid #e1e4ef;border-radius:12px;background:#fff;margin:7px 0}.reportCard p{margin:6px 0}.reportActions{display:flex;gap:5px;flex-wrap:wrap}.voiceTimer{font-size:11px;font-weight:bold;min-width:42px;text-align:center;color:#d93025}
+@media(max-width:760px){#message{min-height:42px!important;font-size:14px!important}.voiceTimer{min-width:38px;font-size:10px}}
+</style></head>
 <body>
 <div id="login">
 <h1>💬 MS Chat</h1><h3 id="authTitle">ورود به حساب</h3>
@@ -79,7 +91,7 @@ button,input{font:inherit}button{cursor:pointer}
 <button class="sideBtn" onclick="openChangePassword()">🔐 تغییر رمز</button>
 <button class="sideBtn" onclick="openGroupPopup()">👥 ساخت گروه</button>
 <button class="sideBtn" id="pushButton" onclick="togglePushNotifications()">🔔 فعال‌کردن اعلان موبایل</button>
-<button class="sideBtn hidden" id="adminButton" onclick="openAdminPopup()">👑 مدیریت کاربران</button>
+<button class="sideBtn hidden" id="adminButton" onclick="openAdminPopup()">👑 مدیریت کاربران</button><button class="sideBtn hidden" id="reportsButton" onclick="openReportsPopup()">🚩 گزارش‌ها</button>
 <button class="sideBtn" onclick="logout()">🚪 خروج</button>
 <hr>
 <div class="sectionTitle">💬 چت‌های اخیر</div>
@@ -91,7 +103,7 @@ button,input{font:inherit}button{cursor:pointer}
 
 <main id="chatArea">
 <header id="chatHeader">
-<div id="chatAvatar">👤</div>
+<div id="chatAvatar" title="مشاهده پروفایل" style="cursor:default">👤</div>
 <div class="chatTitleWrap"><div id="chatTitle" class="chatTitle">برای شروع، یک کاربر را از لیست انتخاب کن 👈</div><div id="chatSub" class="chatSub"></div><div id="typingIndicator" class="typingIndicator"></div></div>
 <button id="callButton" class="callBtn" onclick="startCall('audio')" disabled>📞</button>
 <button id="videoButton" class="callBtn videoBtn" onclick="startCall('video')" disabled>📹</button>
@@ -113,7 +125,7 @@ button,input{font:inherit}button{cursor:pointer}
 <button id="menuVideoCall" onclick="startCall('video');closeActionMenu()">📹 تماس تصویری</button>
 <button id="menuGroupCall" class="hidden" onclick="startGroupCallPlaceholder();closeActionMenu()">👥 تماس گروهی</button>
 </div></div>
-<button class="record" onclick="toggleRecording()" id="recordButton" disabled>🎤</button>
+<span id="voiceTimer" class="voiceTimer">00:00</span><button class="record" onclick="toggleRecording()" id="recordButton" disabled>🎤</button>
 <button class="primary" onclick="sendMessage()" id="sendButton" disabled>ارسال</button>
 </div>
 </main></div>
@@ -121,7 +133,7 @@ button,input{font:inherit}button{cursor:pointer}
 <div id="profilePopup" class="popup"><div class="popupCard">
 <h3>👤 پروفایل</h3><img id="avatarPreview" alt="">
 <p>نام کاربری: <b id="profileUsername"></b></p>
-<input id="displayName" placeholder="نام نمایشی">
+<input id="displayName" placeholder="نام نمایشی"><textarea id="bioInput" maxlength="250" placeholder="بیوگرافی کوتاه" style="width:100%;min-height:80px;padding:10px;border:1px solid #ddd;border-radius:11px"></textarea>
 <input id="avatarFile" type="file" accept="image/*">
 <div class="row"><button onclick="uploadAvatar()">🖼️ تغییر عکس</button><button class="danger" onclick="deleteAvatar()">🗑️ حذف عکس</button></div>
 <button onclick="saveProfile()">💾 ذخیره</button><button class="danger" onclick="openPopup('accountDeletePopup')">🗑️ حذف حساب</button><button onclick="closeProfile()">بستن</button><p id="profileMessage"></p>
@@ -174,6 +186,11 @@ button,input{font:inherit}button{cursor:pointer}
 <h3 id="incomingText">تماس ورودی</h3><button onclick="acceptCall()">✅ قبول</button><button onclick="rejectCall()" class="danger">❌ رد</button>
 </div></div>
 
+
+<div id="profilePublicPopup" class="popup"><div class="popupCard" style="text-align:center"><h3>👤 پروفایل</h3><img id="publicAvatar" class="publicAvatar" alt=""><b id="publicDisplayName"></b><div class="muted" id="publicUsername" style="margin:4px 0 10px"></div><div class="sectionTitle" style="text-align:right">بیوگرافی</div><div id="publicBio" class="bioBox" style="text-align:right">بیوگرافی ندارد.</div><button onclick="closePopup('profilePublicPopup')">بستن</button></div></div>
+<div id="reportsPopup" class="popup"><div class="popupCard"><h3>🚩 گزارش‌ها</h3><div id="reportList"><div class="muted">در حال دریافت...</div></div><button onclick="closePopup('reportsPopup')">بستن</button></div></div>
+<div id="reportHistoryPopup" class="popup"><div class="popupCard"><h3>🔎 بررسی گفتگو</h3><div id="reportHistoryList"></div><button onclick="closePopup('reportHistoryPopup')">بستن</button></div></div>
+<div id="msLoader"><div class="loaderCard"><div class="bigSpinner"></div><span>لطفاً صبر کنید...</span></div></div>
 <div id="videoOverlay"><div class="videoCard">
 <video id="remoteVideo" class="remoteVideo" autoplay playsinline></video><video id="localVideo" class="localVideo" autoplay muted playsinline></video>
 <div class="videoControls"><button onclick="hangUp()">❌ پایان تماس</button></div>
@@ -604,7 +621,7 @@ function renderMessageElement(el,m,mine){
  else if(m.message_type==="group_call"){const card=document.createElement("div");card.className="groupCallCard";const b=document.createElement("b");b.textContent="📞 تماس گروهی";const p=document.createElement("div");p.textContent=m.message||"یک تماس گروهی ایجاد شد";card.appendChild(b);card.appendChild(p);const join=document.createElement("button");join.textContent="ورود به تماس";join.onclick=ev=>{ev.stopPropagation();alert("📞 قابلیت تماس گروهی در نسخه بعدی فعال می‌شود.")};card.appendChild(join);el.appendChild(card)}
  else if(m.message_type==="sticker"){const t=document.createElement("div");t.className="stickerMessage";t.textContent=m.message||"🙂";el.appendChild(t)}
  else {const t=document.createElement("div");t.className="messageText";t.textContent=m.message||"";el.appendChild(t)}
- const f=document.createElement("div");f.className="messageFooter";let footerHtml=`<span>${formatDate(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;if(mine&&m.group_id){const rc=Number(m.read_count||((m.readers||[]).length));if(rc){footerHtml+=`<span class="groupReadHint" title="دیدن اعضایی که پیام را دیده‌اند">👁️ ${rc}</span>`}}f.innerHTML=footerHtml;el.appendChild(f)
+ const f=document.createElement("div");f.className="messageFooter";let footerHtml=`<span>${formatTime(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;if(mine&&m.group_id){const rc=Number(m.read_count||((m.readers||[]).length));if(rc){footerHtml+=`<span class="groupReadHint" title="دیدن اعضایی که پیام را دیده‌اند">👁️ ${rc}</span>`}}f.innerHTML=footerHtml;el.appendChild(f)
  const actions=document.createElement("div");actions.className="actions";const r=document.createElement("button");r.textContent="↩️ Reply";r.onclick=()=>startReply(m);actions.appendChild(r)
  if(mine&&!m.deleted){if(m.message_type==="text"){const e=document.createElement("button");e.textContent="✏️ ویرایش";e.onclick=(ev)=>{ev.stopPropagation();editMessage(m.id,m.message)};actions.appendChild(e)}const del=document.createElement("button");del.textContent="🗑️ حذف";del.onclick=(ev)=>{ev.stopPropagation();deleteMessage(m.id)};actions.appendChild(del)}el.appendChild(actions)
  if(mine&&m.group_id&&!m.deleted){el.onclick=(ev)=>{if(ev.target.closest("button,a,audio,img,.replyQuote"))return;openGroupReaders(m.id)}}
@@ -992,6 +1009,7 @@ async function processPendingCandidates(){
   }
 }
 function formatDate(s){if(!s)return"";let raw=String(s).trim();if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw))raw=raw.replace(" ","T")+"Z";else raw=raw.replace(" ","T");const d=new Date(raw);return isNaN(d.getTime())?String(s):d.toLocaleString("fa-IR",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})}
+function formatTime(s){if(!s)return"";let raw=String(s).trim();if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(raw))raw=raw.replace(" ","T")+"Z";else raw=raw.replace(" ","T");const d=new Date(raw);return isNaN(d.getTime())?String(s).slice(-5):d.toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit",hour12:false})}
 async function deleteMyAccount(){if(!confirm("حساب شما و اطلاعات مرتبط حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",currentUsername);const d=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(d.success){location.reload()}else qs("accountDeleteMessage").textContent=d.message}
 async function openAdminPopup(){openPopup("adminPopup");const d=await (await fetch(`/api/admin/users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`)).json();const box=qs("adminUsers");box.innerHTML="";(d.users||[]).forEach(u=>{const row=document.createElement("div");row.className="searchItem";const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(u.display_name)}</b><div class="muted">${escapeHtml(u.username)}</div>`;row.appendChild(t);if(u.username!==OWNER_USERNAME){const b=document.createElement("button");b.className="danger";b.textContent="حذف";b.onclick=async()=>{if(!confirm(`حذف حساب ${u.username}؟`))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",u.username);const x=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(x.success)openAdminPopup();else qs("adminMessage").textContent=x.message};row.appendChild(b)}box.appendChild(row)})}
 
@@ -1001,253 +1019,87 @@ async function logout(){clearRememberedLogin();try{const fd=new FormData();fd.ap
 
 
 <!-- MSCHAT_SAVED_FORWARD_EXTENSION -->
-<style id="mschatSavedForwardStyles">
+<style id="savedChatStyles">
 .savedBtnSide{width:100%;padding:9px;margin:4px 0;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:rgba(255,255,255,.8)}
-.forwardedBadge{position:absolute;top:5px;left:8px;font-size:10px;opacity:.68;white-space:nowrap;direction:rtl}
-.message.hasForwarded{padding-top:27px}
-.savedMessageItem{padding:10px;border:1px solid #e1e4ef;border-radius:12px;background:#fff;margin:7px 0}
-.savedMessageTop{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-.savedMessageTop b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.savedPreview{white-space:pre-wrap;overflow-wrap:anywhere;font-family:"Lalezar",Tahoma,sans-serif;font-size:16px}
-.savedMeta{font-size:10px;opacity:.6;margin-top:5px}
-.forwardTarget{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #ddd;border-radius:10px;background:#fff;margin:5px 0;cursor:pointer;text-align:right;width:100%}
-.forwardTarget:hover{background:#f5f7ff}
-.forwardTarget .itemText{flex:1}
-.forwardSectionTitle{font-weight:bold;margin:10px 0 5px}
-#savedMessagesList,#forwardTargetsList{max-height:55vh;overflow:auto}
-@media(max-width:760px){.savedPreview{font-size:14px}.forwardedBadge{font-size:9px}}
+.forwardedBadge{font-size:10px;opacity:.68;margin-bottom:5px}.message.hasForwarded{padding-top:10px}.forwardTarget{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #ddd;border-radius:10px;background:#fff;margin:5px 0;cursor:pointer;text-align:right;width:100%}.forwardSectionTitle{font-weight:bold;margin:10px 0 5px}
+#savedChatPanel{display:none;flex:1;min-height:0;flex-direction:column}.saved-chat-list{flex:1;overflow:auto;padding:18px}.saved-chat-input{display:flex;gap:6px;padding:10px;background:rgba(255,255,255,.78);border-top:1px solid rgba(255,255,255,.24)}.saved-chat-input input{flex:1;padding:12px;border:1px solid #ddd;border-radius:11px}.saved-chat-message{max-width:min(76%,700px);width:fit-content;padding:9px 11px;margin:8px 0;border-radius:14px;line-height:1.5;box-shadow:0 2px 8px rgba(0,0,0,.05)}
 </style>
 <script>
 (function(){
-  if(window.MSCHAT_SAVED_FORWARD_EXTENSION)return;
-  window.MSCHAT_SAVED_FORWARD_EXTENSION=true;
-  let forwardSourceMessage=null;
-  let savedOpenMessageId=null;
+if(window.MSCHAT_FINAL_FEATURE_EXTENSION)return;window.MSCHAT_FINAL_FEATURE_EXTENSION=true;
+let forwardSourceMessage=null,savedOpenMessageId=null,savedItemsCache=[],savedChatOpen=false;
+const $=id=>document.getElementById(id);
+function ensureSavedButton(){const users=$('users');if(users&&!$('savedMessagesButton')){const b=document.createElement('button');b.id='savedMessagesButton';b.className='savedBtnSide';b.textContent='💾 پیام‌های ذخیره‌شده';b.onclick=openSavedChat;users.parentElement.insertBefore(b,users)}}
+function ensureSavedChatPanel(){if($('savedChatPanel'))return;const main=$('chatArea');const old=$('messages');const panel=document.createElement('div');panel.id='savedChatPanel';panel.innerHTML='<div id="savedChatList" class="saved-chat-list"></div><div class="saved-chat-input"><input id="savedChatInput" placeholder="در پیام‌های ذخیره‌شده یادداشت بنویس..."><button class="primary" onclick="sendSavedChatMessage()">ارسال</button></div>';main.insertBefore(panel,old);old.style.display='flex'}
+function ensureForwardPopup(){if($('forwardMessagePopup'))return;const d=document.createElement('div');d.id='forwardMessagePopup';d.className='popup';d.innerHTML='<div class="popupCard"><h3>↪️ هدایت پیام</h3><div id="forwardPreview" class="savedMessageItem" style="margin-bottom:10px"></div><input id="forwardTargetSearch" placeholder="🔎 جستجوی مقصد..." oninput="searchForwardTargetsDebounced()"><div id="forwardTargetsList"></div><button onclick="closePopup(\'forwardMessagePopup\')">انصراف</button></div>';document.body.appendChild(d)}
+function uiPreview(m){if(!m)return'';if(m.deleted)return'🚫 پیام حذف شده';if(m.message_type==='image')return'🖼️ عکس';if(m.message_type==='audio')return'🎤 ویس';if(m.message_type==='music')return'🎵 '+(m.message||'موسیقی');if(m.message_type==='sticker')return m.message||'🙂';return m.message||''}
+function senderName(m){return m.forwarded_from_name||m.sender_display_name||userMap.get(m.sender)?.display_name||m.sender||'کاربر'}
+async function toggleSavedMessage(m){if(!m||m.deleted)return;const path=m.saved?'/api/unsave-message':'/api/save-message';const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',m.id);try{const d=await (await fetch(path,{method:'POST',body:fd,cache:'no-store'})).json();if(!d.success){alert(d.message||'عملیات ذخیره ناموفق بود');return}m.saved=!!d.saved;messageDataMap.set(String(m.id),m);const el=messageMap.get(String(m.id));if(el)renderMessageElement(el,m,m.sender===currentUsername);if(savedChatOpen)await loadSavedChat()}catch(e){console.error(e);alert('ارتباط با سرور برقرار نشد.')}}
+function savedChatPreview(m){const wrap=document.createElement('div');wrap.className='saved-chat-message '+(m.saved_chat_mine?'mineSaved':'otherSaved');if(!m.saved_chat_mine){const o=document.createElement('div');o.className='savedOrigin';o.textContent='از '+senderName(m);wrap.appendChild(o)}if(m.forwarded_from_name){const fb=document.createElement('div');fb.className='forwardedBadge';fb.textContent='↪️ هدایت شده از '+m.forwarded_from_name;wrap.appendChild(fb)}const body=document.createElement('div');body.className='messageText';body.textContent=uiPreview(m);wrap.appendChild(body);const meta=document.createElement('div');meta.className='messageFooter';meta.textContent=formatTime(m.saved_at||m.created_at);wrap.appendChild(meta);if(m.saved_chat_kind==='bookmark'){const acts=document.createElement('div');acts.className='actions';const open=document.createElement('button');open.textContent='📂 باز کردن';open.onclick=()=>openSavedItem(m);acts.appendChild(open);const uns=document.createElement('button');uns.textContent='🗑️ حذف ذخیره';uns.onclick=()=>toggleSavedMessage({...m,saved:true});acts.appendChild(uns);const fwd=document.createElement('button');fwd.textContent='↪️ هدایت';fwd.onclick=()=>openForwardPopup(m);acts.appendChild(fwd);wrap.appendChild(acts)}else{const del=document.createElement('button');del.textContent='🗑️ حذف';del.onclick=async()=>{const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('note_id',m.saved_note_id);await fetch('/api/saved-chat/delete-note',{method:'POST',body:fd});loadSavedChat()};wrap.appendChild(del)}return wrap}
+async function loadSavedChat(){ensureSavedChatPanel();const box=$('savedChatList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت...</div>';try{const d=await(await fetch(`/api/saved-chat?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store'})).json();savedItemsCache=d.messages||[];box.innerHTML='';if(!savedItemsCache.length){box.innerHTML='<div class="muted">هنوز چیزی اینجا نیست. می‌توانی خودت یادداشت بنویسی یا پیام‌ها را با دکمه 💾 ذخیره کنی.</div>'}else savedItemsCache.forEach(m=>box.appendChild(savedChatPreview(m)));box.scrollTop=box.scrollHeight}catch(e){console.error(e);box.innerHTML='<div class="muted">دریافت پیام‌ها ناموفق بود.</div>'}}
+async function openSavedChat(){savedChatOpen=true;selectedType='saved';selectedUser='';selectedGroupId=null;selectedGroup=null;stopTyping();cancelReply();if($('deleteConversationButton'))$('deleteConversationButton').style.display='none';if($('membersButton'))$('membersButton').style.display='none';if($('deleteGroupButton'))$('deleteGroupButton').style.display='none';$('messages').style.display='none';$('savedChatPanel').style.display='flex';$('chatTitle').textContent='💾 پیام‌های ذخیره‌شده';$('chatSub').textContent='یادداشت‌های خودت و پیام‌هایی که ذخیره کرده‌ای';$('chatAvatar').textContent='💾';$('chatAvatar').removeAttribute('src');enableComposer(false);await loadSavedChat()}
+window.openSavedChat=openSavedChat;
+window.sendSavedChatMessage=async function(){const input=$('savedChatInput');const text=input.value.trim();if(!text)return;const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message',text);const b=input.nextElementSibling;b.disabled=true;try{const d=await(await fetch('/api/saved-chat/send',{method:'POST',body:fd})).json();if(!d.success){alert(d.message||'ارسال ناموفق بود');return}input.value='';$('savedChatList').appendChild(savedChatPreview(d.message));$('savedChatList').scrollTop=$('savedChatList').scrollHeight;soundSend()}finally{b.disabled=false}}
+window.openSavedItem=async function(m){savedChatOpen=false;$('savedChatPanel').style.display='none';$('messages').style.display='flex';if(m.source_type==='group'){const g=groupMap.get(String(m.group_id))||groupsCache.find(x=>String(x.id)===String(m.group_id));if(g)selectGroup(g);return}let u=usersCache.find(x=>x.username===m.direct_other_username);if(!u){try{const d=await(await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(m.direct_other_username||m.sender)}`)).json();u=(d.users||[]).find(x=>x.username===(m.direct_other_username||m.sender))}catch{}}if(u)upsertRecentUser(u,true),selectUser(u);savedOpenMessageId=String(m.id)}
+window.toggleSavedMessage=toggleSavedMessage;
+window.openForwardPopup=function(m){ensureForwardPopup();forwardSourceMessage=m;$('forwardPreview').textContent=uiPreview(m);$('forwardTargetSearch').value='';loadForwardTargets('');openPopup('forwardMessagePopup')}
+let forwardTimer=null;window.searchForwardTargetsDebounced=function(){clearTimeout(forwardTimer);const q=$('forwardTargetSearch').value.trim();forwardTimer=setTimeout(()=>loadForwardTargets(q),180)};
+async function loadForwardTargets(q){let us=[];try{const d=await(await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(q)}`)).json();us=d.users||[]}catch{}const unique=new Map();[...usersCache,...us].forEach(u=>{if(u.username!==currentUsername&&!q||u.username!==currentUsername&&(u.username.toLowerCase().includes(q.toLowerCase())||(u.display_name||'').toLowerCase().includes(q.toLowerCase())))unique.set(u.username,u)});window._fUs=[...unique.values()];renderForwardTargets(q)}
+window.renderForwardTargets=function(q=''){const box=$('forwardTargetsList');if(!box)return;box.innerHTML='';const qs=(q||'').toLowerCase();const users=(window._fUs||[]).filter(u=>!qs||u.username.toLowerCase().includes(qs)||(u.display_name||'').toLowerCase().includes(qs));const groups=groupsCache.filter(g=>!qs||(g.name||'').toLowerCase().includes(qs));if(users.length){const t=document.createElement('div');t.className='forwardSectionTitle';t.textContent='👤 کاربران';box.appendChild(t)}users.forEach(u=>{const b=document.createElement('button');b.className='forwardTarget';b.textContent=u.display_name;b.onclick=()=>window.forwardMessageTo(u.username);box.appendChild(b)});if(groups.length){const t=document.createElement('div');t.className='forwardSectionTitle';t.textContent='👥 گروه‌ها';box.appendChild(t)}groups.forEach(g=>{const b=document.createElement('button');b.className='forwardTarget';b.textContent=g.name;b.onclick=()=>window.forwardMessageTo('group:'+g.id);box.appendChild(b)})}
+window.forwardMessageTo=async function(target){if(!forwardSourceMessage)return;const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',forwardSourceMessage.id);fd.append('target',target);try{const d=await(await fetch('/api/forward-message',{method:'POST',body:fd})).json();if(!d.success){alert(d.message||'هدایت ناموفق بود');return}closePopup('forwardMessagePopup');alert('✅ پیام هدایت شد.')}catch(e){alert('ارتباط با سرور برقرار نشد.')}};
+async function reportMessage(m){if(m.sender===currentUsername)return;const reason=prompt('دلیل گزارش این پیام را بنویس:','توهین یا محتوای نامناسب');if(reason===null)return;const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',m.id);fd.append('reason',reason);try{const d=await(await fetch('/api/report-message',{method:'POST',body:fd})).json();alert(d.message||'گزارش ثبت شد.')}catch{alert('ثبت گزارش ناموفق بود')}}
+window.reportMessage=reportMessage;
+async function hideForMe(m){if(!confirm('این پیام فقط از صفحه تو حذف شود؟'))return;const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',m.id);const d=await(await fetch('/api/hide-message-for-me',{method:'POST',body:fd})).json();if(d.success){messageMap.get(String(m.id))?.remove();messageMap.delete(String(m.id));messageDataMap.delete(String(m.id))}else alert(d.message||'ناموفق')}
+window.hideForMe=hideForMe;
+// enhance public profile
+window.openPublicProfile=async function(username){try{const d=await(await fetch(`/api/public-profile?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&target=${encodeURIComponent(username)}`,{cache:'no-store'})).json();if(!d.success){alert(d.message||'پروفایل پیدا نشد');return}const p=d.profile;$('publicDisplayName').textContent=p.display_name;$('publicUsername').textContent='@'+p.username;$('publicBio').textContent=p.bio||'بیوگرافی ندارد.';setAvatar($('publicAvatar'),p.avatar,p.display_name,userAvatarUrl(p.username));openPopup('profilePublicPopup')}catch(e){alert('دریافت پروفایل ناموفق بود')}}
+// report admin
+window.openReportsPopup=async function(){openPopup('reportsPopup');const box=$('reportList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت...</div>';try{const d=await(await fetch(`/api/admin/reports?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store'})).json();if(!d.success){box.textContent=d.message||'دسترسی غیرمجاز';return}box.innerHTML='';if(!d.reports.length){box.innerHTML='<div class="muted">گزارشی وجود ندارد.</div>';return}d.reports.forEach(r=>{const c=document.createElement('div');c.className='reportCard';c.innerHTML=`<b>🚩 گزارش #${r.id}</b><p>پیام از: <b>${escapeHtml(r.sender_name||r.sender)}</b></p><p>دلیل: ${escapeHtml(r.reason)}</p><p class="muted">${escapeHtml(formatDate(r.created_at))}</p>`;const a=document.createElement('div');a.className='reportActions';const v=document.createElement('button');v.textContent='🔎 بررسی گفتگو';v.onclick=()=>openReportHistory(r.message_id);a.appendChild(v);const done=document.createElement('button');done.textContent='✅ بررسی شد';done.onclick=async()=>{const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('report_id',r.id);fd.append('status','reviewed');await fetch('/api/admin/report-status',{method:'POST',body:fd});openReportsPopup()};a.appendChild(done);c.appendChild(a);box.appendChild(c)})}catch(e){box.innerHTML='<div class="muted">دریافت گزارش‌ها ناموفق بود.</div>'}}
+async function openReportHistory(id){closePopup('reportsPopup');openPopup('reportHistoryPopup');const box=$('reportHistoryList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';try{const d=await(await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${id}`)).json();box.innerHTML='';(d.messages||[]).forEach(m=>{const c=document.createElement('div');c.className='savedMessageItem';c.innerHTML=`<b>${escapeHtml(userMap.get(m.sender)?.display_name||m.sender)}</b><div class="savedPreview">${escapeHtml(uiPreview(m))}</div><div class="savedMeta">${escapeHtml(formatDate(m.created_at))}</div>`;box.appendChild(c)});}catch{box.textContent='دریافت گفتگو ناموفق بود.'}}
+// richer message renderer
+const originalRenderer=window.renderMessageElement;
+window.renderMessageElement=function(el,m,mine){
+ originalRenderer(el,m,mine);
+ el.classList.toggle('hasForwarded',!!m.forwarded_from_name);
+ if(m.forwarded_from_name){const b=document.createElement('div');b.className='forwardedBadge';b.textContent='↪️ هدایت شده از '+m.forwarded_from_name;el.insertBefore(b,el.firstChild)}
+ const actions=el.querySelector('.actions');if(actions){
+   [...actions.querySelectorAll('button')].forEach(b=>{if((b.textContent||'').includes('ذخیره'))b.remove()});
+   const sv=document.createElement('button');sv.textContent=m.saved?'✅ ذخیره':'💾 ذخیره';sv.onclick=e=>{e.stopPropagation();toggleSavedMessage(m)};actions.appendChild(sv);
+   const fw=document.createElement('button');fw.textContent='↪️ هدایت';fw.onclick=e=>{e.stopPropagation();window.openForwardPopup(m)};actions.appendChild(fw);
+   if(!mine){const hd=document.createElement('button');hd.textContent='🗑️ حذف برای من';hd.onclick=e=>{e.stopPropagation();hideForMe(m)};actions.appendChild(hd);const rp=document.createElement('button');rp.textContent='🚩 گزارش';rp.onclick=e=>{e.stopPropagation();reportMessage(m)};actions.appendChild(rp)}
+ }
+};
+const originalShowHistory=window.showHistory;window.showHistory=function(messages){
+ const box=$('messages');box.innerHTML='';messageMap.clear();messageDataMap.clear();const frag=document.createDocumentFragment();
+ for(const m of(messages||[])){const mine=m.sender===currentUsername;const el=document.createElement('div');el.className=`message ${mine?'mine':'theirs'}`;el.dataset.id=m.id;messageMap.set(String(m.id),el);messageDataMap.set(String(m.id),m);window.renderMessageElement(el,m,mine);frag.appendChild(el)}
+ box.appendChild(frag);scrollBottom();
+ if(savedOpenMessageId){const target=messageMap.get(String(savedOpenMessageId));if(target){requestAnimationFrame(()=>{target.scrollIntoView({behavior:'smooth',block:'center'});target.style.outline='3px solid #6a79ff';setTimeout(()=>target.style.outline='',1500)})}savedOpenMessageId=null;}
+};
+// saved chat close when a normal chat is selected
+const su=window.selectUser,sg=window.selectGroup;window.selectUser=function(u){savedChatOpen=false;if($('savedChatPanel'))$('savedChatPanel').style.display='none';$('messages').style.display='flex';su(u);$('chatAvatar').style.cursor='pointer';$('chatAvatar').onclick=()=>window.openPublicProfile(u.username)};window.selectGroup=function(g){savedChatOpen=false;if($('savedChatPanel'))$('savedChatPanel').style.display='none';$('messages').style.display='flex';sg(g);$('chatAvatar').onclick=null;$('chatAvatar').style.cursor='default'};
+// own profile bio
+const op=window.openProfile;window.openProfile=async function(){openPopup('profilePopup');$('profileUsername').textContent=currentUsername;$('displayName').value=currentDisplayName;$('bioInput').value='';try{const d=await(await fetch(`/api/public-profile?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&target=${encodeURIComponent(currentUsername)}`)).json();if(d.success)$('bioInput').value=d.profile.bio||''}catch{}setAvatar($('avatarPreview'),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));$('profileMessage').textContent=''};
+const sp=window.saveProfile;window.saveProfile=async function(){await sp();const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('bio',$('bioInput').value.trim());const d=await(await fetch('/api/update-bio',{method:'POST',body:fd})).json();if(d.success)$('profileMessage').textContent='✅ پروفایل و بیوگرافی ذخیره شد.'};
+// sounds
+function tone(freq,duration){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const c=new C(),o=c.createOscillator(),g=c.createGain();o.frequency.value=freq;o.type='sine';g.gain.setValueAtTime(.0001,c.currentTime);g.gain.exponentialRampToValueAtTime(.08,c.currentTime+.01);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+duration);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+duration+.02);setTimeout(()=>c.close(),300)}catch{}}
+window.soundSend=()=>tone(620,.07);window.soundReceive=()=>{tone(880,.08);setTimeout(()=>tone(1040,.06),55)};
+const _sendMessage=window.sendMessage;window.sendMessage=async function(){const input=$('message');const has=!!input?.value.trim();await _sendMessage.apply(this,arguments);if(has)soundSend()};
+const _sendSticker=window.sendSticker;window.sendSticker=async function(){await _sendSticker.apply(this,arguments);soundSend()};
+const _sendMusic=window.sendSelectedMusic;window.sendSelectedMusic=async function(){const f=$('musicInput')?.files?.[0];await _sendMusic.apply(this,arguments);if(f)soundSend()};
+const _sendImage=window.sendSelectedImage;window.sendSelectedImage=async function(){const f=$('imageInput')?.files?.[0];await _sendImage.apply(this,arguments);if(f)soundSend()};
 
-  function installSavedForwardUi(){
-    const usersEl=qs("users");
-    if(usersEl&&!qs("savedMessagesButton")){
-      const b=document.createElement("button");
-      b.id="savedMessagesButton";b.className="savedBtnSide";b.textContent="💾 پیام‌های ذخیره‌شده";
-      b.onclick=openSavedMessages;
-      usersEl.parentElement.insertBefore(b,usersEl);
-    }
-    if(!qs("savedMessagesPopup")){
-      const d=document.createElement("div");d.id="savedMessagesPopup";d.className="popup";
-      d.innerHTML=`<div class="popupCard">
-        <h3>💾 پیام‌های ذخیره‌شده</h3>
-        <div id="savedMessagesList"><div class="muted">در حال دریافت...</div></div>
-        <button onclick="closePopup('savedMessagesPopup')">بستن</button>
-      </div>`;
-      document.body.appendChild(d);
-    }
-    if(!qs("forwardMessagePopup")){
-      const d=document.createElement("div");d.id="forwardMessagePopup";d.className="popup";
-      d.innerHTML=`<div class="popupCard">
-        <h3>↪️ هدایت پیام</h3>
-        <div id="forwardPreview" class="savedMessageItem" style="margin-bottom:10px"></div>
-        <input id="forwardTargetSearch" placeholder="🔎 جستجوی مقصد..." oninput="searchForwardTargetsDebounced()">
-        <div id="forwardTargetsList"><div class="muted">در حال دریافت...</div></div>
-        <button onclick="closePopup('forwardMessagePopup')">انصراف</button>
-      </div>`;
-      document.body.appendChild(d);
-    }
-  }
-
-  function uiPreview(m){
-    if(!m)return "";
-    if(m.deleted)return "🚫 پیام حذف شده";
-    if(m.message_type==="image")return "🖼️ عکس";
-    if(m.message_type==="audio")return "🎤 ویس";
-    if(m.message_type==="sticker")return m.message||"🙂";
-    return m.message||"";
-  }
-  function senderName(m){
-    return m.forwarded_from_name||userMap.get(m.sender)?.display_name||m.sender||"کاربر";
-  }
-
-  async function toggleSavedMessage(m){
-    if(!m||m.deleted)return;
-    const path=m.saved?"/api/unsave-message":"/api/save-message";
-    const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",m.id);
-    try{
-      const r=await fetch(path,{method:"POST",body:fd,cache:"no-store"});
-      const d=await r.json();
-      if(!r.ok||!d.success){alert(d.message||"ذخیره پیام ناموفق بود.");return}
-      m.saved=!!d.saved;messageDataMap.set(String(m.id),m);
-      const el=messageMap.get(String(m.id));if(el)renderMessageElement(el,m,m.sender===currentUsername);
-    }catch(e){console.error(e);alert("ارتباط با سرور برای ذخیره پیام برقرار نشد.")}
-  }
-
-  function renderSavedMessages(items){
-    const box=qs("savedMessagesList");box.innerHTML="";
-    if(!items.length){box.innerHTML='<div class="muted">هنوز پیامی ذخیره نکرده‌ای.</div>';return}
-    for(const m of items){
-      const card=document.createElement("div");card.className="savedMessageItem";
-      const top=document.createElement("div");top.className="savedMessageTop";
-      const b=document.createElement("b");
-      const source=m.source_type==="group"?`👥 ${m.source_group_name||"گروه"} • ${m.sender_display_name||m.sender}`:`💬 ${m.sender_display_name||m.sender}`;
-      b.textContent=source;top.appendChild(b);card.appendChild(top);
-      if(m.forwarded_from_name){const fb=document.createElement("div");fb.className="forwardedBadge";fb.style.position="static";fb.style.display="block";fb.textContent=`↪️ هدایت شده از ${m.forwarded_from_name}`;card.appendChild(fb)}
-      const preview=document.createElement("div");preview.className="savedPreview";preview.textContent=uiPreview(m);card.appendChild(preview);
-      const meta=document.createElement("div");meta.className="savedMeta";meta.textContent=m.saved_at?formatDate(m.saved_at):formatDate(m.created_at);card.appendChild(meta);
-      const actions=document.createElement("div");actions.className="actions";
-      const open=document.createElement("button");open.textContent="📂 باز کردن";open.onclick=()=>openSavedItem(m);actions.appendChild(open);
-      const forward=document.createElement("button");forward.textContent="↪️ هدایت";forward.onclick=()=>openForwardPopup(m);actions.appendChild(forward);
-      const remove=document.createElement("button");remove.textContent="🗑️ حذف از ذخیره‌شده‌ها";remove.onclick=async()=>{await toggleSavedMessage({...m,saved:true});openSavedMessages()};actions.appendChild(remove);
-      card.appendChild(actions);box.appendChild(card);
-    }
-  }
-
-  async function openSavedMessages(){
-    installSavedForwardUi();openPopup("savedMessagesPopup");qs("savedMessagesList").innerHTML='<div class="muted">در حال دریافت پیام‌های ذخیره‌شده...</div>';
-    try{
-      const d=await (await fetch(`/api/saved-messages?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:"no-store"})).json();
-      if(!d.success){qs("savedMessagesList").innerHTML=`<div class="muted">${escapeHtml(d.message||"دریافت پیام‌ها ناموفق بود")}</div>`;return}
-      renderSavedMessages(d.messages||[]);
-    }catch(e){console.error(e);qs("savedMessagesList").innerHTML='<div class="muted">دریافت پیام‌های ذخیره‌شده ناموفق بود.</div>'}
-  }
-
-  async function openSavedItem(m){
-    closePopup("savedMessagesPopup");
-    savedOpenMessageId=String(m.id);
-    if(m.source_type==="group"){
-      const g=groupMap.get(String(m.group_id))||groupsCache.find(x=>String(x.id)===String(m.group_id));
-      if(!g){savedOpenMessageId=null;alert("این گروه دیگر در دسترس نیست.");return}
-      selectGroup(g);return;
-    }
-    const username=m.direct_other_username;
-    if(!username){savedOpenMessageId=null;alert("مقصد این پیام پیدا نشد.");return}
-    let u=usersCache.find(x=>x.username===username);
-    if(!u){
-      try{
-        const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(username)}`,{cache:"no-store"})).json();
-        u=(d.users||[]).find(x=>x.username===username);
-      }catch{}
-    }
-    if(!u){u={username,display_name:m.direct_other_display_name||username,online:false,last_seen:null,unread_count:0}}
-    upsertRecentUser(u,true);selectUser(u);
-  }
-
-  let forwardSearchTimer=null;
-  async function loadForwardTargets(query=""){
-    let users=[];
-    try{
-      const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(query)}`,{cache:"no-store"})).json();
-      users=d.users||[];
-    }catch(e){console.warn("Forward target users load failed",e)}
-    const unique=new Map();
-    for(const u of users){if(u.username!==currentUsername)unique.set(u.username,u)}
-    for(const u of usersCache){
-      if(u.username!==currentUsername&&(!query||u.username.toLowerCase().includes(query.toLowerCase())||(u.display_name||"").toLowerCase().includes(query.toLowerCase())))
-        unique.set(u.username,{...unique.get(u.username),...u});
-    }
-    const groups=[...groupsCache];
-    window._forwardUsers=[...unique.values()];
-    window._forwardGroups=groups;
-    renderForwardTargets(query);
-  }
-  function searchForwardTargetsDebounced(){
-    clearTimeout(forwardSearchTimer);
-    const q=(qs("forwardTargetSearch")?.value||"").trim();
-    forwardSearchTimer=setTimeout(()=>loadForwardTargets(q),180);
-  }
-
-  function renderForwardTargets(query=null){
-    const box=qs("forwardTargetsList");if(!box)return;box.innerHTML="";
-    const q=String(query===null?(qs("forwardTargetSearch")?.value||""):query).trim().toLowerCase();
-    const users=(window._forwardUsers||[]).filter(u=>!q||u.username.toLowerCase().includes(q)||(u.display_name||"").toLowerCase().includes(q));
-    const groups=(window._forwardGroups||[]).filter(g=>!q||(g.name||"").toLowerCase().includes(q));
-    if(users.length){const title=document.createElement("div");title.className="forwardSectionTitle";title.textContent="👤 کاربران";box.appendChild(title)}
-    for(const u of users){
-      const b=document.createElement("button");b.type="button";b.className="forwardTarget";const av=document.createElement("img");av.className="avatar tiny";setAvatar(av,u.avatar,u.display_name,userAvatarUrl(u.username));const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(u.display_name)}</b><div class="muted">${escapeHtml(u.username)} • ${u.online?'🟢 آنلاین':'⚫ آفلاین'}</div>`;b.append(av,t);b.onclick=()=>forwardMessageTo(u.username);box.appendChild(b);
-    }
-    if(groups.length){const title=document.createElement("div");title.className="forwardSectionTitle";title.textContent="👥 گروه‌ها";box.appendChild(title)}
-    for(const g of groups){
-      const b=document.createElement("button");b.type="button";b.className="forwardTarget";const av=document.createElement("img");av.className="avatar tiny";setAvatar(av,g.avatar,g.name,groupAvatarUrl(g.id));const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(g.name)}</b><div class="muted">👥 ${Number(g.members_count||0)} عضو</div>`;b.append(av,t);b.onclick=()=>forwardMessageTo(`group:${g.id}`);box.appendChild(b);
-    }
-    if(!users.length&&!groups.length)box.innerHTML='<div class="muted">مقصدی پیدا نشد.</div>';
-  }
-
-  async function openForwardPopup(m){
-    if(!m||m.deleted)return;
-    installSavedForwardUi();forwardSourceMessage=m;
-    qs("forwardTargetSearch").value="";
-    qs("forwardPreview").innerHTML="";
-    const p=document.createElement("div");p.textContent=`${m.forwarded_from_name?`↪️ هدایت شده از ${m.forwarded_from_name} • `:""}${uiPreview(m)}`;qs("forwardPreview").appendChild(p);
-    openPopup("forwardMessagePopup");
-    await loadForwardTargets();
-  }
-
-  async function forwardMessageTo(target){
-    if(!forwardSourceMessage)return;
-    if(!confirm("این پیام هدایت شود؟"))return;
-    const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",forwardSourceMessage.id);fd.append("target",target);
-    try{
-      const r=await fetch("/api/forward-message",{method:"POST",body:fd,cache:"no-store"});
-      const d=await r.json();
-      if(!r.ok||!d.success){alert(d.message||"هدایت پیام ناموفق بود.");return}
-      const m=d.message;
-      const visible=(selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.receiver===selectedUser);
-      if(visible)addMessageObj(m,true,true);
-      closePopup("forwardMessagePopup");
-      alert("✅ پیام هدایت شد.");
-    }catch(e){console.error(e);alert("ارتباط با سرور برای هدایت پیام برقرار نشد.")}
-  }
-
-  function upgradedRenderMessageElement(el,m,mine){
-    el.innerHTML="";el.classList.toggle("hasForwarded",!!m.forwarded_from_name);
-    const head=document.createElement("div");head.className="messageHeader";head.textContent=mine?"من":(userMap.get(m.sender)?.display_name||m.sender);el.appendChild(head);
-    if(m.forwarded_from_name){const fb=document.createElement("div");fb.className="forwardedBadge";fb.textContent=`↪️ هدایت شده از ${m.forwarded_from_name}`;el.appendChild(fb)}
-    if(m.reply_to){
-      const q=document.createElement("div");q.className="replyQuote";
-      const original=findMessageById(m.reply_to);const originalName=original?(userMap.get(original.sender)?.display_name||original.sender||""):"پیام";let preview="";
-      if(original){preview=original.deleted?"🚫 پیام حذف شده":original.message_type==="image"?"🖼️ عکس":original.message_type==="audio"?"🎤 ویس":(original.message||"")}
-      if(preview.length>90)preview=preview.slice(0,90)+"…";
-      q.textContent=`↩️ پاسخ به ${originalName}${preview?": "+preview:""}`;q.title="برای رفتن به پیام اصلی کلیک کن";q.onclick=()=>qs("messages").querySelector(`[data-id="${m.reply_to}"]`)?.scrollIntoView({behavior:"smooth",block:"center"});el.appendChild(q);
-    }
-    if(m.deleted){const t=document.createElement("div");t.className="deletedText";t.textContent="🚫 این پیام حذف شده است";el.appendChild(t)}
-    else if(m.message_type==="image"&&m.media){const img=document.createElement("img");img.className="msgImage";img.loading="lazy";img.decoding="async";img.src=mediaUrlFor(m);img.dataset.messageId=m.id;img.onclick=()=>openImageViewer(m.id,img.src);el.appendChild(img)}
-    else if(m.message_type==="audio"&&m.audio){const wrap=document.createElement("div");const a=document.createElement("audio");a.controls=true;a.preload="none";a.src=mediaUrlFor(m);a.className="audioMessage";wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود ویس";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
-    else if(m.message_type==="music"&&m.audio){const wrap=document.createElement("div");wrap.className="musicMessage";const nm=document.createElement("div");nm.className="musicName";nm.textContent=m.message||"🎵 موسیقی";wrap.appendChild(nm);const a=document.createElement("audio");a.controls=true;a.preload="metadata";a.src=mediaUrlFor(m);a.className="audioMessage";wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود موسیقی";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
-    else if(m.message_type==="group_call"){const card=document.createElement("div");card.className="groupCallCard";const b=document.createElement("b");b.textContent="📞 تماس گروهی";const pp=document.createElement("div");pp.textContent=m.message||"یک تماس گروهی ایجاد شد";card.appendChild(b);card.appendChild(pp);const join=document.createElement("button");join.textContent="ورود به تماس";join.onclick=ev=>{ev.stopPropagation();alert("📞 قابلیت تماس گروهی در نسخه بعدی فعال می‌شود.")};card.appendChild(join);el.appendChild(card)}
-    else if(m.message_type==="sticker"){const t=document.createElement("div");t.className="stickerMessage";t.textContent=m.message||"🙂";el.appendChild(t)}
-    else {const t=document.createElement("div");t.className="messageText";t.textContent=m.message||"";el.appendChild(t)}
-    const f=document.createElement("div");f.className="messageFooter";let footerHtml=`<span>${formatDate(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;
-    if(mine&&m.group_id){const rc=Number(m.read_count||((m.readers||[]).length));if(rc)footerHtml+=`<span class="groupReadHint" title="دیدن اعضایی که پیام را دیده‌اند">👁️ ${rc}</span>`}
-    f.innerHTML=footerHtml;el.appendChild(f);
-    const actions=document.createElement("div");actions.className="actions";
-    if(!m.deleted){
-      const r=document.createElement("button");r.textContent="↩️ Reply";r.onclick=ev=>{ev.stopPropagation();startReply(m)};actions.appendChild(r);
-      const fw=document.createElement("button");fw.textContent="↪️ هدایت";fw.onclick=ev=>{ev.stopPropagation();openForwardPopup(m)};actions.appendChild(fw);
-      const sv=document.createElement("button");sv.textContent=m.saved?"✅ ذخیره‌شده":"💾 ذخیره";sv.onclick=ev=>{ev.stopPropagation();toggleSavedMessage(m)};actions.appendChild(sv);
-      if(mine&&m.message_type==="text"){const e=document.createElement("button");e.textContent="✏️ ویرایش";e.onclick=ev=>{ev.stopPropagation();editMessage(m.id,m.message)};actions.appendChild(e)}
-      if(mine){const del=document.createElement("button");del.textContent="🗑️ حذف";del.onclick=ev=>{ev.stopPropagation();deleteMessage(m.id)};actions.appendChild(del)}
-    }
-    el.appendChild(actions);
-    if(mine&&m.group_id&&!m.deleted)el.onclick=ev=>{if(ev.target.closest("button,a,audio,img,.replyQuote"))return;openGroupReaders(m.id)};
-    const readHint=el.querySelector(".groupReadHint");if(readHint)readHint.onclick=ev=>{ev.stopPropagation();openGroupReaders(m.id)};
-  }
-
-  function upgradedShowHistory(messages){
-    const box=qs("messages");box.innerHTML="";messageMap.clear();messageDataMap.clear();const frag=document.createDocumentFragment();
-    for(const m of(messages||[])){const mine=m.sender===currentUsername;const el=document.createElement("div");el.className=`message ${mine?"mine":"theirs"}`;el.dataset.id=m.id;messageMap.set(String(m.id),el);messageDataMap.set(String(m.id),m);upgradedRenderMessageElement(el,m,mine);frag.appendChild(el)}
-    box.appendChild(frag);scrollBottom();
-    if(savedOpenMessageId){const target=messageMap.get(String(savedOpenMessageId));if(target){requestAnimationFrame(()=>{target.scrollIntoView({behavior:"smooth",block:"center"});target.style.outline="3px solid #6a79ff";setTimeout(()=>target.style.outline="",1800)})}savedOpenMessageId=null;}
-  }
-
-  window.openSavedMessages=openSavedMessages;
-  window.openForwardPopup=openForwardPopup;
-  window.forwardMessageTo=forwardMessageTo;
-  window.renderForwardTargets=renderForwardTargets;
-  window.toggleSavedMessage=toggleSavedMessage;
-  window.openSavedItem=openSavedItem;
-  window.renderMessageElement=upgradedRenderMessageElement;
-  window.showHistory=upgradedShowHistory;
-
-  installSavedForwardUi();
-  updateActionMenu();
-  setTimeout(()=>autoLoginRemembered(),50);
+const oldHandleSocket=window.handleSocket;window.handleSocket=async function(d){if(d?.type==='message'&&d.message?.sender!==currentUsername)soundReceive();return oldHandleSocket(d)};
+// voice timer wrapper
+let vtInt=null,vtStart=0;const oldToggle=window.toggleRecording;window.toggleRecording=async function(){if(!window.isRecording && typeof isRecording!=='undefined'){ }return oldToggle.apply(this,arguments)};
+// robust timer via polling state
+setInterval(()=>{const el=$('voiceTimer');if(!el)return;if(typeof isRecording!=='undefined'&&isRecording){if(!vtStart)vtStart=Date.now();const sec=Math.floor((Date.now()-vtStart)/1000);el.textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}else{vtStart=0;el.textContent='00:00'}},250);
+// animate clicks and loading
+const reqFetch=window.fetch;let activeLoads=0,loadTimer=null;function showLoader(){activeLoads++;if(activeLoads===1){loadTimer=setTimeout(()=>{$('msLoader').style.display='flex'},180)}}function hideLoader(){activeLoads=Math.max(0,activeLoads-1);if(!activeLoads){clearTimeout(loadTimer);$('msLoader').style.display='none'}}
+window.fetch=async function(input,init){const url=typeof input==='string'?input:(input?.url||'');const use=['/register','/login','/upload-image','/upload-audio','/upload-music','/create-group','/add-group-members','/remove-group-member','/api/report-message','/api/save-message','/api/unsave-message'].some(x=>url.includes(x));if(use)showLoader();try{return await reqFetch(input,init)}finally{if(use)hideLoader()}};
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(b){b.classList.remove('msClick');void b.offsetWidth;b.classList.add('msClick')}});
+// ensure owner report button and sidebar saved button after login
+const oldOpenChat=window.openChat;window.openChat=function(){oldOpenChat();setTimeout(()=>{ensureSavedButton();if(currentUsername===OWNER_USERNAME)$('reportsButton')?.classList.remove('hidden')},100)};
+ensureSavedButton();ensureSavedChatPanel();
 })();
 </script>
 <!-- /MSCHAT_SAVED_FORWARD_EXTENSION -->

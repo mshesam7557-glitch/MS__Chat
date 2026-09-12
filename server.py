@@ -961,6 +961,27 @@ async def background_image():
     return FileResponse("background.png", media_type="image/png")
 
 
+# Theme images are stored in the project root and are intentionally served
+# through a small whitelist instead of exposing the whole project directory.
+THEME_IMAGE_NAMES = {
+    "neon",
+    "forest",
+    "sunset",
+    "ocean",
+    "galaxy",
+    "city",
+    "winter",
+}
+
+
+@app.get("/theme_{theme_name}.jpg")
+async def theme_image(theme_name: str):
+    if theme_name not in THEME_IMAGE_NAMES:
+        return Response(status_code=404)
+    filename = f"theme_{theme_name}.jpg"
+    return FileResponse(filename, media_type="image/jpeg")
+
+
 @app.get("/manifest.webmanifest")
 async def manifest_file():
     return FileResponse("manifest.webmanifest", media_type="application/manifest+json", headers={"Cache-Control":"no-cache"})

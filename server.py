@@ -2560,28 +2560,11 @@ async def chat(websocket: WebSocket, username: str, token: str):
 _BASE_INIT_DB = init_db
 
 def init_db():
+    # Only the core schema runs on the request-time lazy initialization path.
+    # Optional feature migrations (bio, saved messages, reports, forwarded fields,
+    # etc.) run separately in a non-fatal background task below, so a temporary
+    # PostgreSQL relation lock can never take the web service down.
     _BASE_INIT_DB()
-    # Additive migration for saved/forwarded messages.
-    with psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=20) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute("SET statement_timeout = 15000")
-            cursor.execute("SET lock_timeout = 5000")
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS saved_messages (
-                    id BIGSERIAL PRIMARY KEY,
-                    username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
-                    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
-                    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(username, message_id)
-                )
-            """)
-            cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_username TEXT")
-            cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_name TEXT")
-            cursor.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_message_id BIGINT")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_saved_messages_user ON saved_messages(username, saved_at DESC)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_saved_messages_message ON saved_messages(message_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_forwarded_from ON messages(forwarded_from_message_id)")
-        connection.commit()
 
 
 def _saved_ids_for_messages(username, message_ids):
@@ -2992,11 +2975,57 @@ async def api_forward_message(
 # EXTRA FEATURES: saved chat, self-hide messages, reports, bio, music
 # =========================================================
 def ensure_extra_feature_schema():
-    with psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=20) as connection:
+    # Extra migrations are intentionally NOT fatal to application startup.
+    # Render/Supabase may temporarily hold a relation lock while another instance
+    # is starting. In that case retry in the background instead of killing uvicorn.
+    with psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=10) as connection:
         with connection.cursor() as cursor:
-            cursor.execute("SET statement_timeout = 15000")
-            cursor.execute("SET lock_timeout = 5000")
-            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT ''")
+            cursor.execute("SET statement_timeout = 8000")
+            cursor.execute("SET lock_timeout = 1500")
+
+            # Optional columns/objects: do them here, after the server is already
+            # serving requests.  A short lock timeout plus retry makes deployments
+            # resilient when another Render instance is touching the schema.
+            cursor.execute(
+                "SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='users' AND column_name='bio'"
+            )
+            if cursor.fetchone() is None:
+                try:
+                    cursor.execute("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''")
+                except Exception as e:
+                    if type(e).__name__ == 'LockNotAvailable':
+                        connection.rollback()
+                        print('⚠️ Bio column is temporarily locked; will retry on the next migration pass.')
+                        return
+                    raise
+
+            for sql in [
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_username TEXT",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_name TEXT",
+                "ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_message_id BIGINT",
+            ]:
+                try:
+                    cursor.execute(sql)
+                except Exception as e:
+                    if type(e).__name__ == 'LockNotAvailable':
+                        connection.rollback()
+                        print('⚠️ Message migration is temporarily locked; will retry on the next migration pass.')
+                        return
+                    raise
+
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS saved_messages (
+                    id BIGSERIAL PRIMARY KEY,
+                    username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                    saved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(username, message_id)
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_saved_messages_user ON saved_messages(username, saved_at DESC)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_saved_messages_message ON saved_messages(message_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_forwarded_from ON messages(forwarded_from_message_id)")
+
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS hidden_messages (
                     username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
@@ -3027,8 +3056,23 @@ def ensure_extra_feature_schema():
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_reports_status ON message_reports(status, created_at DESC)")
         connection.commit()
 
-# This runs after the original schema initialization, including on existing databases.
-ensure_extra_feature_schema()
+
+async def _run_extra_schema_migrations():
+    # Keep retrying after the web server is already available.
+    for attempt in range(6):
+        try:
+            await asyncio.to_thread(ensure_extra_feature_schema)
+            print("✅ Extra feature schema is ready")
+            return
+        except Exception as error:
+            print(f"⚠️ Extra feature schema attempt {attempt + 1}/6 failed: {type(error).__name__}: {error}")
+            await asyncio.sleep(3)
+    print("⚠️ Extra feature schema migration could not complete during startup; app remains online.")
+
+
+@app.on_event("startup")
+async def _startup_background_migrations():
+    asyncio.create_task(_run_extra_schema_migrations())
 
 # ----- Hidden message helpers -----
 def _hidden_message_ids(username, message_ids):

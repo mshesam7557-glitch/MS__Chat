@@ -109,6 +109,29 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
 
+THEME_FILES = {
+    "theme_neon.jpg", "theme_forest.jpg", "theme_sunset.jpg",
+    "theme_ocean.jpg", "theme_galaxy.jpg", "theme_city.jpg",
+    "theme_winter.jpg",
+}
+
+def _make_theme_route(filename):
+    async def _serve_theme():
+        path = os.path.join(os.getcwd(), filename)
+        if not os.path.isfile(path):
+            return Response(status_code=404)
+        return FileResponse(path, media_type="image/jpeg")
+    return _serve_theme
+
+for _theme_file in THEME_FILES:
+    app.add_api_route(
+        f"/{_theme_file}",
+        _make_theme_route(_theme_file),
+        methods=["GET"],
+        name=f"theme_{_theme_file}",
+    )
+
+
 
 DB_POOL_SIZE = 4
 
@@ -3316,6 +3339,7 @@ async def api_admin_reports(username: str, token: str):
                 FROM message_reports r JOIN messages m ON m.id=r.message_id
                 LEFT JOIN users su ON su.username=m.sender LEFT JOIN users ru ON ru.username=r.reporter_username
                 LEFT JOIN groups g ON g.id=m.group_id
+                WHERE r.status = 'open'
                 ORDER BY r.created_at DESC
                 LIMIT 200
             """)

@@ -3058,16 +3058,35 @@ def ensure_extra_feature_schema():
 
 
 async def _run_extra_schema_migrations():
-    # Keep retrying after the web server is already available.
-    for attempt in range(6):
+    # Never block Render startup on optional feature migrations.
+    # A short PostgreSQL advisory lock makes multiple Render instances
+    # serialize this work without waiting on a long relation lock.
+    for attempt in range(12):
         try:
-            await asyncio.to_thread(ensure_extra_feature_schema)
-            print("✅ Extra feature schema is ready")
-            return
+            async def migrate_once():
+                with psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=8) as connection:
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT pg_try_advisory_lock(hashtext('mschat_extra_schema_v2')) AS locked")
+                        row = cursor.fetchone()
+                        if not row or not row["locked"]:
+                            return False
+                        try:
+                            ensure_extra_feature_schema()
+                            return True
+                        finally:
+                            try:
+                                cursor.execute("SELECT pg_advisory_unlock(hashtext('mschat_extra_schema_v2'))")
+                            except Exception:
+                                pass
+            done = await asyncio.to_thread(migrate_once)
+            if done:
+                print("✅ Extra feature schema is ready")
+                return
+            print(f"ℹ️ Another instance is running extra schema migration; retry {attempt + 1}/12")
         except Exception as error:
-            print(f"⚠️ Extra feature schema attempt {attempt + 1}/6 failed: {type(error).__name__}: {error}")
-            await asyncio.sleep(3)
-    print("⚠️ Extra feature schema migration could not complete during startup; app remains online.")
+            print(f"⚠️ Extra feature schema attempt {attempt + 1}/12 failed: {type(error).__name__}: {error}")
+        await asyncio.sleep(2.5)
+    print("⚠️ Extra feature schema migration did not finish yet; app remains online and will retry on later startup.")
 
 
 @app.on_event("startup")

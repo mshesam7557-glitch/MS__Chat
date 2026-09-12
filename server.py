@@ -1443,7 +1443,11 @@ async def upload_image(
             sender, target_receiver, "", "image", add_storage_prefix(path), None, rid, group_id
         )
         msg = get_message(mid)
-        await deliver_message(msg)
+        if msg:
+            try:
+                await deliver_message(msg)
+            except Exception as delivery_error:
+                print("Image realtime delivery warning:", repr(delivery_error))
         return {"success": True, "message": msg}
     except Exception as error:
         print("Image upload error:", error)
@@ -3314,6 +3318,7 @@ async def api_admin_reports(username: str, token: str):
                 FROM message_reports r JOIN messages m ON m.id=r.message_id
                 LEFT JOIN users su ON su.username=m.sender LEFT JOIN users ru ON ru.username=r.reporter_username
                 LEFT JOIN groups g ON g.id=m.group_id
+                WHERE r.status='open'
                 ORDER BY r.created_at DESC
                 LIMIT 200
             """)

@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="MS Chat">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/background.png">
-<title>MS__Chat</title>
+<title>MS Chat</title>
 <style>
 @import url("https://fonts.googleapis.com/css2?family=Lalezar&display=swap");
 *{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Arial,Tahoma,sans-serif}
@@ -59,27 +59,10 @@ button,input{font:inherit}button{cursor:pointer}
 @media(max-width:760px){#chat{width:calc(100% - 10px);height:calc(100vh - 20px);min-height:0;margin:10px auto;border-radius:16px}#sidebar{width:35%;min-width:125px;padding:8px}#chatArea{width:65%}.sideBtn{font-size:11px}.message{max-width:88%;font-size:13px}.callBtn{padding:7px 8px;font-size:10px}.avatar{width:34px;height:34px;font-size:16px}.itemName{font-size:12px}.itemStatus{font-size:9px}#chatHeader{min-height:60px;padding:7px 9px}.chatTitle{font-size:13px}#sendArea{padding:7px}#sendArea button{padding:9px}.localVideo{width:120px;height:90px}}
  .rememberRow{width:100%;display:flex;align-items:center;justify-content:flex-start;gap:9px;margin:10px 0 4px;padding:8px 10px;border:1px solid #e1e4ee;border-radius:10px;background:#f7f8fc;font-size:13px;line-height:1.4;opacity:.95;cursor:pointer;user-select:none;text-align:right}.rememberRow input{width:17px!important;height:17px!important;margin:0!important;accent-color:#4e62dd;flex:none}.rememberRow span{flex:1}.actionWrap{position:relative;display:inline-flex}.actionMenu{display:none;position:absolute;right:0;bottom:48px;min-width:190px;background:rgba(255,255,255,.98);border:1px solid #ddd;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:7px;z-index:1800}.actionMenu.show{display:flex;flex-direction:column;gap:5px}.actionMenu button{border:0;background:#f5f6fb;border-radius:9px;padding:9px;text-align:right;cursor:pointer}.actionMenu button:hover{background:#e8ebff}.musicMessage{width:min(320px,100%);margin-top:5px}.musicName{font-size:12px;margin-bottom:5px;word-break:break-word}.groupCallCard{padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#f2f5ff,#eefaf5);border:1px solid #dfe4ff}.groupCallCard b{display:block;margin-bottom:5px}.groupCallCard button{border:0;border-radius:9px;padding:7px 10px;cursor:pointer} .successMessage{color:#0a8f3d !important;font-weight:bold;}</style>
 
-<style id="mschatThemeStyles">
-:root{--ms-accent:#4e62dd;--ms-bg-overlay:rgba(6,14,50,.28);--ms-panel:rgba(255,255,255,.82);--ms-panel-strong:rgba(255,255,255,.94);--ms-input:#fff;--ms-text:#111;--ms-mine:#d8ffd2;--ms-theirs:rgba(255,255,255,.95);--ms-border:rgba(0,0,0,.08)}
-body{color:var(--ms-text);background-color:#10162e;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png");}
-#sidebar{background:var(--ms-panel)}#chatHeader,#replyBar,#sendArea{background:var(--ms-panel)}#message,#login input,.popup input,.popup select,.popup textarea{background:var(--ms-input);color:var(--ms-text)}
-.sideBtn,.userItem,.groupItem,.searchItem{background:color-mix(in srgb,var(--ms-panel) 92%,transparent)}
-.mine,.saved-chat-message.mineSaved{background:var(--ms-mine)}.theirs,.saved-chat-message.otherSaved{background:var(--ms-theirs)}
-.themeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.themeCard{position:relative;border:2px solid transparent;border-radius:14px;overflow:hidden;cursor:pointer;min-height:88px;box-shadow:0 4px 14px rgba(0,0,0,.12);padding:0;background:#fff}.themeCard.selected{border-color:var(--ms-accent);box-shadow:0 0 0 3px rgba(78,98,221,.16)}.themePreview{height:100%;min-height:88px;padding:10px;display:flex;flex-direction:column;justify-content:space-between}.themePreviewTitle{font-weight:bold;font-size:13px;text-align:right}.themePreviewBubble{width:65%;height:10px;border-radius:999px;background:rgba(255,255,255,.7)}.themePreviewBubble.alt{align-self:flex-start;background:rgba(0,0,0,.12)}.themeLabel{position:absolute;bottom:7px;right:8px;font-size:11px;font-weight:bold;text-shadow:0 1px 2px rgba(0,0,0,.15)}
-.theme-default .themePreview{background:linear-gradient(135deg,#15245e,#5b3ca3 55%,#fb8db5);color:#fff}.theme-light .themePreview{background:linear-gradient(135deg,#eef7ff,#dff2ff 50%,#d8e8ff)}.theme-dark .themePreview{background:linear-gradient(135deg,#08111f,#13243d 55%,#1f314d);color:#fff}.theme-neon .themePreview{background:linear-gradient(135deg,#12001f,#41106f 48%,#007a9e);color:#fff}.theme-sunset .themePreview{background:linear-gradient(135deg,#5b2d45,#e36e38 52%,#ffd36e)}.theme-forest .themePreview{background:linear-gradient(135deg,#0a2f24,#23634e 55%,#82ab63);color:#fff}.theme-ocean .themePreview{background:linear-gradient(135deg,#05324b,#0f8ab5 55%,#91e0eb)}.theme-midnight .themePreview{background:linear-gradient(135deg,#090b16,#252a44 55%,#58658d);color:#fff}
-body.theme-light{--ms-bg-overlay:rgba(245,250,255,.52);--ms-panel:rgba(255,255,255,.88);--ms-panel-strong:rgba(255,255,255,.96);--ms-input:#fff;--ms-text:#172033;--ms-mine:#dff8d8;--ms-theirs:#fff;--ms-accent:#4d73e6;background-color:#dfeeff;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}
-body.theme-dark{--ms-bg-overlay:rgba(2,7,18,.7);--ms-panel:rgba(10,19,36,.84);--ms-panel-strong:rgba(8,16,30,.96);--ms-input:#132238;--ms-text:#eef5ff;--ms-mine:#173f36;--ms-theirs:#112033;--ms-border:rgba(255,255,255,.1);--ms-accent:#72a8ff;background-color:#08111f;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}.theme-dark #login,.theme-dark .popupCard{background:var(--ms-panel-strong);color:var(--ms-text)}.theme-dark .sideBtn,.theme-dark .userItem,.theme-dark .groupItem,.theme-dark .searchItem,.theme-dark .actionMenu button,.theme-dark .popup button{color:var(--ms-text);background:rgba(18,33,55,.9);border-color:rgba(255,255,255,.08)}.theme-dark #chatHeader{border-color:rgba(255,255,255,.08)}
-body.theme-neon{--ms-bg-overlay:rgba(17,0,36,.54);--ms-panel:rgba(29,15,48,.82);--ms-panel-strong:rgba(23,12,40,.96);--ms-input:#231342;--ms-text:#f8efff;--ms-mine:#40245c;--ms-theirs:#24183a;--ms-accent:#d16cff;background-color:#12001e;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}.theme-neon #login,.theme-neon .popupCard{background:var(--ms-panel-strong);color:var(--ms-text)}.theme-neon .sideBtn,.theme-neon .userItem,.theme-neon .groupItem,.theme-neon .searchItem,.theme-neon .actionMenu button,.theme-neon .popup button{color:var(--ms-text);background:rgba(40,17,65,.88);border-color:rgba(209,108,255,.18)}
-body.theme-sunset{--ms-bg-overlay:rgba(76,26,28,.28);--ms-panel:rgba(255,244,237,.84);--ms-panel-strong:rgba(255,249,245,.96);--ms-text:#3a2020;--ms-mine:#ffe0bd;--ms-theirs:#fff9f5;--ms-accent:#d97036;background-color:#ffd7bf;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}
-body.theme-forest{--ms-bg-overlay:rgba(5,29,22,.38);--ms-panel:rgba(239,250,243,.84);--ms-panel-strong:rgba(247,253,249,.96);--ms-text:#163226;--ms-mine:#d5f0d8;--ms-theirs:#f7fff8;--ms-accent:#2f8b5b;background-color:#a6c7a9;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}
-body.theme-ocean{--ms-bg-overlay:rgba(0,52,77,.32);--ms-panel:rgba(239,251,255,.84);--ms-panel-strong:rgba(248,253,255,.96);--ms-text:#123342;--ms-mine:#cceff5;--ms-theirs:#f7fdff;--ms-accent:#1399c4;background-color:#a9dcea;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}
-body.theme-midnight{--ms-bg-overlay:rgba(5,8,20,.64);--ms-panel:rgba(21,27,43,.86);--ms-panel-strong:rgba(15,20,34,.97);--ms-input:#1b243a;--ms-text:#edf2ff;--ms-mine:#1e304f;--ms-theirs:#151f34;--ms-accent:#9ab3ff;background-color:#0b1020;background-image:linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("background.png")}.theme-midnight #login,.theme-midnight .popupCard{background:var(--ms-panel-strong);color:var(--ms-text)}.theme-midnight .sideBtn,.theme-midnight .userItem,.theme-midnight .groupItem,.theme-midnight .searchItem,.theme-midnight .actionMenu button,.theme-midnight .popup button{color:var(--ms-text);background:rgba(29,38,61,.9);border-color:rgba(255,255,255,.09)}
-@media(max-width:760px){.themeGrid{grid-template-columns:1fr 1fr}.themeCard{min-height:80px}.themePreview{min-height:80px}}
-</style>
 <style id="mschatUltimateStyles">
 #musicInput,#imageInput{display:none!important}
 #sendArea{min-height:66px!important}#message{min-height:44px!important;font-size:15px!important}
-#chatHeader>.callBtn{display:none!important}
+#chatHeader>#callButton,#chatHeader>#videoButton,#chatHeader>#hangupButton{display:none!important}
 .msg-loading{display:inline-flex;align-items:center;gap:8px;opacity:.72}.miniSpinner{width:16px;height:16px;border:2px solid #ccd2ff;border-top-color:#4e62dd;border-radius:50%;animation:msSpin .7s linear infinite}@keyframes msSpin{to{transform:rotate(360deg)}}
 .message{animation:msMsgIn .22s ease both}.message:hover{transform:translateY(-1px);transition:transform .16s ease,box-shadow .16s ease;box-shadow:0 5px 16px rgba(0,0,0,.08)}
 button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,box-shadow .12s ease,background .15s ease}.msClick{animation:msClick .18s ease}@keyframes msClick{50%{transform:scale(.96)}}@keyframes msMsgIn{from{opacity:0;transform:translateY(6px) scale(.985)}to{opacity:1;transform:none}}
@@ -114,59 +97,42 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 #sendArea{min-width:0;}
 #message{min-width:0;}
 </style>
-<style id="rememberFix">#login .rememberRow{box-sizing:border-box}#loginMessage:empty{display:none}#loginMessage{min-height:22px;margin:10px 0 0;line-height:1.6}<style id="rememberUiFix">
-#login .rememberRow{
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:flex-start;
-  gap:10px;
-  margin:12px 0 6px;
-  padding:10px 12px;
-  border:1px solid #e1e4ee;
-  border-radius:11px;
-  background:#f7f8fc;
-  text-align:right;
-  cursor:pointer;
-  direction:rtl;
-}
-#login .rememberRow input#rememberMe{
-  appearance:auto;
-  -webkit-appearance:checkbox;
-  width:18px!important;
-  min-width:18px!important;
-  max-width:18px!important;
-  height:18px!important;
-  min-height:18px!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  flex:0 0 18px!important;
-  accent-color:#4e62dd;
-  cursor:pointer;
-}
-#login .rememberRow span{
-  flex:1 1 auto;
-  width:auto!important;
-  margin:0!important;
-  padding:0!important;
-  font-size:13px;
-  line-height:1.5;
-  cursor:pointer;
-}
-#chatHeader>.callBtn,
-#chatHeader>#callButton,
-#chatHeader>#videoButton,
-#chatHeader>#hangupButton{display:none!important}
-#chatHeader .chatSub:empty{display:none}
+<style id="rememberFix">#login .rememberRow{box-sizing:border-box}#loginMessage:empty{display:none}#loginMessage{min-height:22px;margin:10px 0 0;line-height:1.6}</style>
+<style id="themeSystemStyles">
+:root{--ms-accent:#3575ff;--ms-accent2:#6847e8;--ms-bg-overlay1:rgba(6,14,50,.28);--ms-bg-overlay2:rgba(18,8,60,.30);--ms-side:rgba(255,255,255,.82);--ms-chat:rgba(255,255,255,.13);--ms-panel:rgba(255,255,255,.78);}
+body{background:linear-gradient(var(--ms-bg-overlay1),var(--ms-bg-overlay2)),url("background.png") center/cover fixed;color:var(--ms-text,#111);transition:background .35s ease,color .25s ease}
+#login,#sidebar,#chatHeader,#sendArea,.glass{transition:background .3s ease,box-shadow .3s ease}
+#login>button{background:linear-gradient(135deg,var(--ms-accent),var(--ms-accent2))}
+.sideBtn:hover,.userItem:hover,.groupItem:hover{transform:translateY(-1px)}
+.themeGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin:10px 0 15px}
+.themeChoice{border:1px solid #dfe2ee;border-radius:13px;padding:12px;text-align:right;background:#fff;cursor:pointer;min-height:74px;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.themeChoice:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.09)}
+.themeChoice.active{border:2px solid var(--ms-accent);padding:11px;box-shadow:0 8px 22px rgba(0,0,0,.10)}
+.themeChoice b{display:block;margin-bottom:4px}.themePreview{height:12px;border-radius:999px;margin-top:8px}
+.themeChoice[data-theme="light"] .themePreview{background:linear-gradient(90deg,#eef3ff,#ffffff)}
+.themeChoice[data-theme="dark"] .themePreview{background:linear-gradient(90deg,#121827,#27314a)}
+.themeChoice[data-theme="neon"] .themePreview{background:linear-gradient(90deg,#00c6ff,#ff4ecd)}
+.themeChoice[data-theme="sunset"] .themePreview{background:linear-gradient(90deg,#ff8a65,#7c4dff)}
+.themeChoice[data-theme="forest"] .themePreview{background:linear-gradient(90deg,#2e7d32,#8bc34a)}
+.themeChoice[data-theme="ocean"] .themePreview{background:linear-gradient(90deg,#0288d1,#80deea)}
+.themeChoice[data-theme="midnight"] .themePreview{background:linear-gradient(90deg,#172033,#5c6bc0)}
+body.theme-light{--ms-text:#152033;--ms-accent:#3976ff;--ms-accent2:#6b58e8;--ms-bg-overlay1:rgba(240,245,255,.35);--ms-bg-overlay2:rgba(255,255,255,.45)}
+body.theme-light #sidebar,body.theme-light #chatHeader,body.theme-light #sendArea,body.theme-light #login{background:rgba(255,255,255,.92)}
+body.theme-dark{--ms-text:#f3f6ff;--ms-accent:#7aa2ff;--ms-accent2:#9b7cff;--ms-bg-overlay1:rgba(5,8,18,.68);--ms-bg-overlay2:rgba(20,12,48,.72)}
+body.theme-dark #sidebar,body.theme-dark #chatHeader,body.theme-dark #sendArea{background:rgba(14,19,33,.88);color:#f3f6ff}body.theme-dark .userItem,body.theme-dark .groupItem,body.theme-dark .searchItem,body.theme-dark .popupCard{background:#1b2233;color:#f3f6ff;border-color:#303a50}body.theme-dark #messages{background:rgba(8,12,22,.22)}body.theme-dark .theirs{background:#20283a;color:#f3f6ff;border-color:#303a50}body.theme-dark #message{background:#121927;color:#fff;border-color:#34405a}body.theme-dark .actionMenu,body.theme-dark .stickerPanel{background:#1b2233;color:#fff;border-color:#303a50}
+body.theme-neon{--ms-text:#f4f6ff;--ms-accent:#00c6ff;--ms-accent2:#ff4ecd;--ms-bg-overlay1:rgba(7,8,28,.58);--ms-bg-overlay2:rgba(33,7,45,.58)}body.theme-neon #sidebar,body.theme-neon #chatHeader,body.theme-neon #sendArea{background:rgba(15,13,36,.84);color:#fff;box-shadow:0 0 24px rgba(0,198,255,.08)}body.theme-neon .userItem,body.theme-neon .groupItem{background:rgba(25,22,54,.8);color:#fff;border-color:rgba(255,78,205,.24)}
+body.theme-sunset{--ms-accent:#ff7a59;--ms-accent2:#8b5cf6;--ms-bg-overlay1:rgba(65,25,30,.28);--ms-bg-overlay2:rgba(69,28,88,.28)}
+body.theme-forest{--ms-accent:#318b4a;--ms-accent2:#74b816;--ms-bg-overlay1:rgba(10,42,20,.3);--ms-bg-overlay2:rgba(25,55,30,.25)}
+body.theme-ocean{--ms-accent:#0086c7;--ms-accent2:#17b8c8;--ms-bg-overlay1:rgba(3,34,55,.24);--ms-bg-overlay2:rgba(3,67,87,.2)}
+body.theme-midnight{--ms-accent:#667eea;--ms-accent2:#764ba2;--ms-bg-overlay1:rgba(7,10,24,.56);--ms-bg-overlay2:rgba(31,18,55,.52)}
 </style>
 </head>
 <body>
 <div id="login">
-<h1>💬 MS__Chat</h1><h3 id="authTitle">ورود به حساب</h3>
+<h1>💬 MS Chat</h1><h3 id="authTitle">ورود به حساب</h3>
 <input id="username" placeholder="نام کاربری" autocomplete="username">
 <input id="password" type="password" placeholder="رمز عبور" autocomplete="current-password">
-<label class="rememberRow" for="rememberMe"><input id="rememberMe" type="checkbox"><span>مرا به خاطر بسپار</span></label>
+<label class="rememberRow"><input id="rememberMe" type="checkbox"> <span>مرا به خاطر بسپار</span></label>
 <button onclick="authAction()">ورود</button>
 <p id="switchMode" onclick="switchAuthMode()">حساب ندارم؛ ثبت‌نام کنم</p><p id="loginMessage"></p>
 </div>
@@ -179,9 +145,8 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 </div>
 <button class="sideBtn" onclick="openProfile()">👤 پروفایل</button>
 <button class="sideBtn" onclick="openChangePassword()">🔐 تغییر رمز</button>
-<button class="sideBtn" onclick="openThemeSettings()">🎨 ظاهر و تم</button>
 <button class="sideBtn" onclick="openGroupPopup()">👥 ساخت گروه</button>
-<button class="sideBtn" id="pushButton" onclick="togglePushNotifications()">🔔 فعال‌کردن اعلان موبایل</button>
+<button class="sideBtn" id="pushButton" onclick="togglePushNotifications()">🔔 فعال‌کردن اعلان موبایل</button><button class="sideBtn" id="themeButton" onclick="openThemeSettings()">🎨 ظاهر و تم</button>
 <button class="sideBtn hidden" id="adminButton" onclick="openAdminPopup()">👑 مدیریت کاربران</button><button class="sideBtn hidden" id="reportsButton" onclick="openReportsPopup()">🚩 گزارش‌ها</button>
 <button class="sideBtn" onclick="logout()">🚪 خروج</button>
 <hr>
@@ -221,6 +186,16 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 </div>
 </main></div>
 
+<div id="themePopup" class="popup"><div class="popupCard">
+<h3>🎨 ظاهر و تم</h3>
+<p class="muted">این انتخاب فقط برای همین اکانت و همین دستگاه ذخیره می‌شود.</p>
+<div class="themeGrid" id="themeGrid"></div>
+<div class="sectionTitle">🖼️ پس‌زمینه دلخواه</div>
+<input id="customThemeBg" type="file" accept="image/*">
+<div class="row"><button onclick="applyCustomBackground()">اعمال پس‌زمینه</button><button class="danger" onclick="resetCustomBackground()">حذف پس‌زمینه دلخواه</button></div>
+<button onclick="closePopup('themePopup')">بستن</button>
+</div></div>
+
 <div id="profilePopup" class="popup"><div class="popupCard">
 <h3>👤 پروفایل</h3><img id="avatarPreview" alt="">
 <p>نام کاربری: <b id="profileUsername"></b></p>
@@ -228,17 +203,6 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 <input id="avatarFile" type="file" accept="image/*">
 <div class="row"><button onclick="uploadAvatar()">🖼️ تغییر عکس</button><button class="danger" onclick="deleteAvatar()">🗑️ حذف عکس</button></div>
 <button onclick="saveProfile()">💾 ذخیره</button><button class="danger" onclick="openPopup('accountDeletePopup')">🗑️ حذف حساب</button><button onclick="closeProfile()">بستن</button><p id="profileMessage"></p>
-</div></div>
-
-<div id="themePopup" class="popup"><div class="popupCard">
-<h3>🎨 ظاهر و تم</h3>
-<p class="muted">این تنظیمات فقط برای همین حساب و روی همین دستگاه ذخیره می‌شود.</p>
-<div class="themeGrid" id="themeGrid"></div>
-<div class="sectionTitle" style="margin-top:14px">🖼️ پس‌زمینه دلخواه</div>
-<input id="customBgInput" type="file" accept="image/*">
-<div class="row" style="margin-top:8px"><button onclick="applyCustomBackground()">اعمال پس‌زمینه</button><button class="danger" onclick="resetThemeBackground()">بازگردانی پیش‌فرض</button></div>
-<p id="themeMessage" class="successMessage"></p>
-<button onclick="closePopup('themePopup')">بستن</button>
 </div></div>
 
 <div id="passwordPopup" class="popup"><div class="popupCard">
@@ -339,7 +303,8 @@ function normalizeSessionDescription(desc){
 function newCallId(){return crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`}
 function clearCallTimer(){if(callTimer){clearTimeout(callTimer);callTimer=null}}
 
-function qs(id){return document.getElementById(id)}
+function qs(id){return document.getElementById(id)}function installButtonAnimations(){document.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;b.classList.remove("msClick");void b.offsetWidth;b.classList.add("msClick")})}
+installButtonAnimations();
 function openPopup(id){qs(id).style.display="flex"} function closePopup(id){qs(id).style.display="none"}
 function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function initials(name){return (name||"?").trim().slice(0,1)}
@@ -424,6 +389,17 @@ async function disablePushNotifications(){
 }
 function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4);const raw=atob((base64String+padding).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
 
+const THEME_KEY_PREFIX="mschat_theme_v2:";
+const THEME_NAMES={default:"🌙 پیش‌فرض MS__Chat",light:"☀️ روشن",dark:"🌑 تاریک",neon:"⚡ نئون",sunset:"🌅 غروب",forest:"🌲 جنگلی",ocean:"🌊 اقیانوس",midnight:"🖤 نیمه‌شب"};
+function themeStorageKey(){return THEME_KEY_PREFIX+(currentUsername||"guest");}
+function getThemePrefs(){try{return JSON.parse(localStorage.getItem(themeStorageKey())||"null")||{theme:"default",bg:""}}catch{return {theme:"default",bg:""}}}
+function saveThemePrefs(p){try{localStorage.setItem(themeStorageKey(),JSON.stringify(p))}catch{}}
+function applyTheme(theme,bgOverride){const body=document.body;body.classList.remove("theme-light","theme-dark","theme-neon","theme-sunset","theme-forest","theme-ocean","theme-midnight");if(theme&&theme!=="default")body.classList.add("theme-"+theme);const p=getThemePrefs();const bg=bgOverride!==undefined?bgOverride:p.bg||"";body.style.backgroundImage=bg?`linear-gradient(var(--ms-bg-overlay1),var(--ms-bg-overlay2)),url(${JSON.stringify(bg)})`:`linear-gradient(var(--ms-bg-overlay1),var(--ms-bg-overlay2)),url("background.png")`;if(bgOverride!==undefined){p.bg=bgOverride;p.theme=theme||"default";saveThemePrefs(p)}}
+function renderThemeChoices(){const g=qs("themeGrid");if(!g)return;const active=getThemePrefs().theme||"default";g.innerHTML="";for(const [key,name] of Object.entries(THEME_NAMES)){const d=document.createElement("button");d.type="button";d.className="themeChoice";d.dataset.theme=key;if(key===active)d.classList.add("active");d.innerHTML=`<b>${name}</b><span class="muted">تغییر ظاهر فقط برای من</span><div class="themePreview"></div>`;d.onclick=()=>{const p=getThemePrefs();p.theme=key;saveThemePrefs(p);applyTheme(key,p.bg||"");renderThemeChoices()};g.appendChild(d)}}
+function openThemeSettings(){renderThemeChoices();openPopup("themePopup")}
+function applyCustomBackground(){const f=qs("customThemeBg")?.files?.[0];if(!f)return alert("اول یک تصویر انتخاب کن.");if(f.size>3*1024*1024)return alert("برای جلوگیری از سنگین شدن سایت، تصویر پس‌زمینه حداکثر 3MB باشد.");const r=new FileReader();r.onload=()=>{const p=getThemePrefs();p.bg=r.result;p.theme=p.theme||"default";saveThemePrefs(p);applyTheme(p.theme,p.bg);alert("✅ پس‌زمینه برای این دستگاه ذخیره شد.")};r.readAsDataURL(f)}
+function resetCustomBackground(){const p=getThemePrefs();p.bg="";saveThemePrefs(p);applyTheme(p.theme,"")}
+function applySavedTheme(){const p=getThemePrefs();applyTheme(p.theme,p.bg||"")}
 function switchAuthMode(){isRegisterMode=!isRegisterMode;qs("authTitle").textContent=isRegisterMode?"ساخت حساب جدید":"ورود به حساب";document.querySelector("#login>button").textContent=isRegisterMode?"ثبت‌نام":"ورود";qs("switchMode").textContent=isRegisterMode?"حساب دارم؛ وارد شوم":"حساب ندارم؛ ثبت‌نام کنم";qs("password").autocomplete=isRegisterMode?"new-password":"current-password";qs("loginMessage").textContent="";qs("loginMessage").classList.remove("successMessage")}
 async function authAction(){
  const username=qs("username").value.trim(),password=qs("password").value, msg=qs("loginMessage");if(!username||!password){msg.textContent="نام کاربری و رمز عبور را وارد کن.";return}
@@ -483,7 +459,7 @@ function startUsersRefresh(){
  if(usersRefreshTimer)clearInterval(usersRefreshTimer);
  usersRefreshTimer=setInterval(()=>{if(!document.hidden)refreshUsersDirect()},15000);
 }
-function openChat(){qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket();syncPushState()}
+function openChat(){applySavedTheme();qs("login").style.display="none";qs("chat").classList.remove("hidden");qs("myUsername").textContent=currentDisplayName;qs("adminButton").classList.toggle("hidden",currentUsername!==OWNER_USERNAME);setAvatar(qs("myAvatar"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));refreshUsersDirect();startUsersRefresh();connectWebSocket();syncPushState()}
 
 function updateSelectedPeerHeader(){
  if(selectedType!=="user"||!selectedUser)return;
@@ -1205,35 +1181,6 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(b){b
 // ensure owner report button and sidebar saved button after login
 const oldOpenChat=window.openChat;window.openChat=function(){oldOpenChat();setTimeout(()=>{ensureSavedButton();if(currentUsername===OWNER_USERNAME)$('reportsButton')?.classList.remove('hidden')},100)};
 ensureSavedButton();ensureSavedChatPanel();
-
-// ===== Per-account appearance / theme system =====
-const MS_THEME_KEY='mschat_theme_v2_';
-const MS_THEME_DEFS=[
- {id:'default',label:'🌙 پیش‌فرض MS__Chat'},
- {id:'light',label:'☀️ روشن'},
- {id:'dark',label:'🌑 تاریک'},
- {id:'neon',label:'⚡ نئون'},
- {id:'sunset',label:'🌅 غروب'},
- {id:'forest',label:'🌲 جنگلی'},
- {id:'ocean',label:'🌊 ساحلی'},
- {id:'midnight',label:'🖤 نیمه‌شب'}
-];
-function themeStorageKey(){return MS_THEME_KEY+(currentUsername||'guest')}
-function currentThemeSettings(){try{return JSON.parse(localStorage.getItem(themeStorageKey())||'{}')}catch{return {}}}
-function applyTheme(themeId){
- const valid=MS_THEME_DEFS.some(x=>x.id===themeId)?themeId:'default';
- document.body.classList.remove(...MS_THEME_DEFS.filter(x=>x.id!=='default').map(x=>'theme-'+x.id));
- if(valid!=='default')document.body.classList.add('theme-'+valid);
- const st=currentThemeSettings();st.theme=valid;try{localStorage.setItem(themeStorageKey(),JSON.stringify(st))}catch{}
- renderThemeCards();
-}
-function openThemeSettings(){renderThemeCards();const st=currentThemeSettings();if(qs('themeMessage'))qs('themeMessage').textContent='';openPopup('themePopup')}
-function renderThemeCards(){const grid=qs('themeGrid');if(!grid)return;const st=currentThemeSettings();const selected=st.theme||'default';grid.innerHTML='';for(const t of MS_THEME_DEFS){const b=document.createElement('button');b.type='button';b.className='themeCard theme-'+t.id+(selected===t.id?' selected':'');b.innerHTML='<div class="themePreview"><div class="themePreviewTitle">MS__Chat</div><div class="themePreviewBubble"></div><div class="themePreviewBubble alt"></div><div class="themeLabel">'+escapeHtml(t.label)+'</div></div>';b.onclick=()=>{applyTheme(t.id);if(qs('themeMessage'))qs('themeMessage').textContent='✅ تم انتخاب شد.'};grid.appendChild(b)}}
-function applyCustomBackground(){const f=qs('customBgInput')?.files?.[0];if(!f||!f.type.startsWith('image/'))return alert('یک تصویر انتخاب کن.');if(f.size>3*1024*1024)return alert('برای جلوگیری از سنگین شدن مرورگر، تصویر باید حداکثر 3MB باشد.');const r=new FileReader();r.onload=()=>{const st=currentThemeSettings();st.customBg=r.result;try{localStorage.setItem(themeStorageKey(),JSON.stringify(st));applyStoredTheme();if(qs('themeMessage'))qs('themeMessage').textContent='✅ پس‌زمینه دلخواه اعمال شد.'}catch{alert('ذخیره پس‌زمینه ممکن نشد.')}};r.readAsDataURL(f)}
-function resetThemeBackground(){const st=currentThemeSettings();delete st.customBg;try{localStorage.setItem(themeStorageKey(),JSON.stringify(st));applyStoredTheme();if(qs('themeMessage'))qs('themeMessage').textContent='✅ پس‌زمینه پیش‌فرض برگشت.'}catch{}}
-function applyStoredTheme(){const st=currentThemeSettings();const id=st.theme||'default';applyTheme(id);const bg=st.customBg;document.body.style.backgroundImage=bg?`linear-gradient(var(--ms-bg-overlay),var(--ms-bg-overlay)),url("${bg}")`:''}
-const _oldOpenChatTheme=window.openChat;window.openChat=function(){_oldOpenChatTheme();applyStoredTheme();setTimeout(renderThemeCards,150)};
-applyStoredTheme();
 })();
 </script>
 <!-- /MSCHAT_SAVED_FORWARD_EXTENSION -->

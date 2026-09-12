@@ -57,13 +57,14 @@ button,input{font:inherit}button{cursor:pointer}
 #videoOverlay{display:none;position:fixed;inset:0;background:rgba(3,7,22,.85);z-index:3000;align-items:center;justify-content:center}.videoCard{position:relative;width:min(950px,95vw);height:min(720px,90vh);background:#081023;border-radius:18px;overflow:hidden}.remoteVideo{width:100%;height:100%;object-fit:contain;background:#000}.localVideo{position:absolute;right:15px;bottom:15px;width:180px;height:130px;object-fit:cover;border-radius:12px;border:2px solid #fff}.videoControls{position:absolute;left:0;right:0;bottom:12px;text-align:center}.videoControls button{padding:10px 15px;border:0;border-radius:10px;background:#ffdede}
 #imageViewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:3500;align-items:center;justify-content:center;padding:20px}.fullImage{max-width:95vw;max-height:95vh;border-radius:10px}.membersList{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}.memberRow{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;background:#f4f5fb}.memberMeta{flex:1}.memberMeta small{display:block;opacity:.65}
 @media(max-width:760px){#chat{width:calc(100% - 10px);height:calc(100vh - 20px);min-height:0;margin:10px auto;border-radius:16px}#sidebar{width:35%;min-width:125px;padding:8px}#chatArea{width:65%}.sideBtn{font-size:11px}.message{max-width:88%;font-size:13px}.callBtn{padding:7px 8px;font-size:10px}.avatar{width:34px;height:34px;font-size:16px}.itemName{font-size:12px}.itemStatus{font-size:9px}#chatHeader{min-height:60px;padding:7px 9px}.chatTitle{font-size:13px}#sendArea{padding:7px}#sendArea button{padding:9px}.localVideo{width:120px;height:90px}}
- .successMessage{color:#0a8f3d !important;font-weight:bold;}</style>
+ .rememberRow{display:flex;align-items:center;justify-content:flex-start;gap:7px;margin:6px 0 2px;font-size:12px;opacity:.85;cursor:pointer}.rememberRow input{width:auto;margin:0}.actionWrap{position:relative;display:inline-flex}.actionMenu{display:none;position:absolute;right:0;bottom:48px;min-width:190px;background:rgba(255,255,255,.98);border:1px solid #ddd;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:7px;z-index:1800}.actionMenu.show{display:flex;flex-direction:column;gap:5px}.actionMenu button{border:0;background:#f5f6fb;border-radius:9px;padding:9px;text-align:right;cursor:pointer}.actionMenu button:hover{background:#e8ebff}.musicMessage{width:min(320px,100%);margin-top:5px}.musicName{font-size:12px;margin-bottom:5px;word-break:break-word}.groupCallCard{padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#f2f5ff,#eefaf5);border:1px solid #dfe4ff}.groupCallCard b{display:block;margin-bottom:5px}.groupCallCard button{border:0;border-radius:9px;padding:7px 10px;cursor:pointer} .successMessage{color:#0a8f3d !important;font-weight:bold;}</style>
 </head>
 <body>
 <div id="login">
 <h1>💬 MS Chat</h1><h3 id="authTitle">ورود به حساب</h3>
 <input id="username" placeholder="نام کاربری" autocomplete="username">
 <input id="password" type="password" placeholder="رمز عبور" autocomplete="current-password">
+<label class="rememberRow"><input id="rememberMe" type="checkbox"> <span>مرا به خاطر بسپار</span></label>
 <button onclick="authAction()">ورود</button>
 <p id="switchMode" onclick="switchAuthMode()">حساب ندارم؛ ثبت‌نام کنم</p><p id="loginMessage"></p>
 </div>
@@ -102,9 +103,16 @@ button,input{font:inherit}button{cursor:pointer}
 <div id="sendArea">
 <input id="message" placeholder="پیامت رو بنویس..." disabled onkeydown="handleEnter(event)" oninput="handleTypingInput()" onblur="stopTyping()">
 <input id="imageInput" type="file" accept="image/*" onchange="sendSelectedImage()">
+<input id="musicInput" type="file" accept="audio/*" onchange="sendSelectedMusic()">
 <button onclick="toggleStickerPanel()" id="stickerButton" disabled title="استیکر">😊</button>
 <div id="stickerPanel" class="stickerPanel"><div class="sectionTitle">✨ استیکرهای MS__Chat</div><div id="stickerGrid" class="stickerGrid"></div></div>
-<button onclick="document.getElementById('imageInput').click()" id="imageButton" disabled>🖼️</button>
+<div class="actionWrap"><button onclick="toggleActionMenu(event)" id="actionButton" disabled title="بیشتر">➕</button><div id="actionMenu" class="actionMenu">
+<button onclick="document.getElementById('imageInput').click();closeActionMenu()">🖼️ ارسال عکس</button>
+<button onclick="document.getElementById('musicInput').click();closeActionMenu()">🎵 ارسال موسیقی</button>
+<button id="menuAudioCall" onclick="startCall('audio');closeActionMenu()">📞 تماس صوتی</button>
+<button id="menuVideoCall" onclick="startCall('video');closeActionMenu()">📹 تماس تصویری</button>
+<button id="menuGroupCall" class="hidden" onclick="startGroupCallPlaceholder();closeActionMenu()">👥 تماس گروهی</button>
+</div></div>
 <button class="record" onclick="toggleRecording()" id="recordButton" disabled>🎤</button>
 <button class="primary" onclick="sendMessage()" id="sendButton" disabled>ارسال</button>
 </div>
@@ -224,6 +232,12 @@ function setAvatar(el,url,name,fallbackUrl=""){el.innerHTML="";let src=url||"";i
 function targetKey(){return selectedType==="group"?"group:"+selectedGroupId:selectedUser}
 function selectedName(){return selectedType==="group"?(selectedGroup?.name||"گروه"):(usersCache.find(u=>u.username===selectedUser)?.display_name||selectedUser)}
 let pushEnabled=false;
+let rememberedLoginKey="mschat_remembered_login_v1";
+function saveRememberedLogin(){try{if(qs("rememberMe")?.checked)localStorage.setItem(rememberedLoginKey,JSON.stringify({username:currentUsername,token:authToken,display_name:currentDisplayName,avatar:currentAvatar}));else localStorage.removeItem(rememberedLoginKey)}catch(e){console.warn("Remember login save failed",e)}}
+function clearRememberedLogin(){try{localStorage.removeItem(rememberedLoginKey)}catch{}}
+function getRememberedLogin(){try{const x=JSON.parse(localStorage.getItem(rememberedLoginKey)||"null");return x&&x.username&&x.token?x:null}catch{return null}}
+async function autoLoginRemembered(){const x=getRememberedLogin();if(!x)return;currentUsername=x.username;authToken=x.token;currentDisplayName=x.display_name||x.username;currentAvatar=x.avatar||"";openChat()}
+
 function notify(title,body){
  if(pushEnabled)return;
  if("Notification"in window && document.visibilityState!=="visible" && Notification.permission==="granted")new Notification(title,{body,icon:"/background.png"});
@@ -301,12 +315,12 @@ async function authAction(){
    qs("switchMode").textContent="حساب ندارم؛ ثبت‌نام کنم";
    qs("password").autocomplete="current-password";
    qs("password").value="";
-   msg.textContent="✅ حساب شما با موفقیت ساخته شد. حالا می‌توانید با همین نام کاربری وارد شوید.";
+   clearRememberedLogin();msg.textContent="✅ حساب شما با موفقیت ساخته شد. حالا می‌توانید با همین نام کاربری وارد شوید.";
    msg.classList.add("successMessage");
    qs("username").value=username;
    return;
  }
- currentUsername=d.username;currentDisplayName=d.display_name;currentAvatar=d.avatar||"";authToken=d.token;openChat();syncPushState()
+ currentUsername=d.username;currentDisplayName=d.display_name;currentAvatar=d.avatar||"";authToken=d.token;saveRememberedLogin();openChat();syncPushState()
  }catch{msg.textContent="ارتباط با سرور برقرار نشد."}
 }
 let usersRefreshTimer=null;
@@ -552,10 +566,10 @@ async function markDirectRead(sender){
 function selectUser(u){stopTyping();qs("typingIndicator").classList.remove("show");selectedType="user";selectedUser=u.username;unreadState.direct[u.username]=0;u.unread_count=0;renderUsers();selectedGroupId=null;selectedGroup=null;qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";qs("deleteConversationButton").style.display="inline-block";setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);syncCallButtons();qs("messages").innerHTML="";cancelReply();markDirectRead(u.username);loadDirectHistory(u.username)}
 function selectGroup(g){stopTyping();qs("typingIndicator").classList.remove("show");selectedType="group";unreadState.groups[String(g.id)]=0;renderGroups();selectedUser="";qs("deleteConversationButton").style.display="none";sendWs({action:"mark-group-read",group_id:g.id});selectedGroupId=g.id;selectedGroup=g;setHeader(g.name,g.avatar,groupAvatarUrl(g.id),"👥 "+(g.members_count||0)+" عضو");enableComposer(true);qs("membersButton").style.display="inline-block";qs("deleteGroupButton").style.display=selectedGroup.owner===currentUsername?"inline-block":"none";qs("messages").innerHTML="";cancelReply();sendWs({action:"group-history",group_id:g.id});setTimeout(()=>sendWs({action:"group-info",group_id:g.id}),0);}
 function setHeader(name,avatar,avatarFallback,sub){qs("chatTitle").textContent=name;qs("chatSub").textContent=sub||"";setAvatar(qs("chatAvatar"),avatar,name,avatarFallback)}
-function enableComposer(v){["message","sendButton","recordButton","imageButton","stickerButton","callButton","videoButton"].forEach(id=>qs(id).disabled=!v);qs("hangupButton").style.display="none"}
+function enableComposer(v){["message","sendButton","recordButton","imageButton","musicInput","stickerButton","callButton","videoButton","actionButton"].forEach(id=>{if(qs(id))qs(id).disabled=!v});qs("hangupButton").style.display="none";updateActionMenu()}
 function isNearBottom(){const b=qs("messages");return b.scrollHeight-b.scrollTop-b.clientHeight<140}
 function mediaFallback(id){return messageFileUrl(id,false)}
-function mediaUrlFor(m){if(!m)return "";if(m.message_type==="image"||m.message_type==="audio")return messageFileUrl(m.id,false);return m.media||m.audio||""}
+function mediaUrlFor(m){if(!m)return "";if(m.message_type==="image"||m.message_type==="audio"||m.message_type==="music")return messageFileUrl(m.id,false);return m.media||m.audio||""}
 function openImageViewer(id,src){const v=qs("fullImage");v.onerror=()=>{v.onerror=null;v.src=mediaFallback(id)};v.src=src;qs("imageViewer").style.display="flex"}
 function showHistory(messages){
  const box=qs("messages"); box.innerHTML=""; messageMap.clear(); messageDataMap.clear(); const frag=document.createDocumentFragment();
@@ -586,6 +600,8 @@ function renderMessageElement(el,m,mine){
  if(m.deleted){const t=document.createElement("div");t.className="deletedText";t.textContent="🚫 این پیام حذف شده است";el.appendChild(t)}
  else if(m.message_type==="image"&&m.media){const img=document.createElement("img");img.className="msgImage";img.loading="lazy";img.decoding="async";img.src=mediaUrlFor(m);img.dataset.messageId=m.id;img.onclick=()=>openImageViewer(m.id,img.src);el.appendChild(img)}
  else if(m.message_type==="audio"&&m.audio){const wrap=document.createElement("div");const a=document.createElement("audio");a.controls=true;a.preload="none";a.src=mediaUrlFor(m);a.className="audioMessage";wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود ویس";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
+ else if(m.message_type==="music"&&m.audio){const wrap=document.createElement("div");wrap.className="musicMessage";const nm=document.createElement("div");nm.className="musicName";nm.textContent=m.message||"🎵 موسیقی";wrap.appendChild(nm);const a=document.createElement("audio");a.controls=true;a.preload="metadata";a.src=mediaUrlFor(m);wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود موسیقی";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
+ else if(m.message_type==="group_call"){const card=document.createElement("div");card.className="groupCallCard";const b=document.createElement("b");b.textContent="📞 تماس گروهی";const p=document.createElement("div");p.textContent=m.message||"یک تماس گروهی ایجاد شد";card.appendChild(b);card.appendChild(p);const join=document.createElement("button");join.textContent="ورود به تماس";join.onclick=ev=>{ev.stopPropagation();alert("📞 قابلیت تماس گروهی در نسخه بعدی فعال می‌شود.")};card.appendChild(join);el.appendChild(card)}
  else if(m.message_type==="sticker"){const t=document.createElement("div");t.className="stickerMessage";t.textContent=m.message||"🙂";el.appendChild(t)}
  else {const t=document.createElement("div");t.className="messageText";t.textContent=m.message||"";el.appendChild(t)}
  const f=document.createElement("div");f.className="messageFooter";let footerHtml=`<span>${formatDate(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;if(mine&&m.group_id){const rc=Number(m.read_count||((m.readers||[]).length));if(rc){footerHtml+=`<span class="groupReadHint" title="دیدن اعضایی که پیام را دیده‌اند">👁️ ${rc}</span>`}}f.innerHTML=footerHtml;el.appendChild(f)
@@ -638,6 +654,10 @@ function stopTyping(){
  if(typingActive)sendTypingState(false);
 }
 
+function updateActionMenu(){const group=selectedType==="group";const ac=qs("menuAudioCall"),vc=qs("menuVideoCall"),gc=qs("menuGroupCall");if(ac)ac.classList.toggle("hidden",group);if(vc)vc.classList.toggle("hidden",group);if(gc)gc.classList.toggle("hidden",!group)}
+function toggleActionMenu(e){e?.stopPropagation();if(!selectedType)return;updateActionMenu();qs("actionMenu")?.classList.toggle("show")}
+function closeActionMenu(){qs("actionMenu")?.classList.remove("show")}
+document.addEventListener("click",e=>{const menu=qs("actionMenu");const btn=qs("actionButton");if(menu?.classList.contains("show")&&!menu.contains(e.target)&&e.target!==btn)menu.classList.remove("show")});
 let sendingMessage=false;
 async function sendMessage(){
  const input=qs("message");
@@ -714,6 +734,8 @@ async function sendSticker(sticker){if(!selectedType||!STICKERS.includes(sticker
 let imageSending=false;
 async function sendSelectedImage(){const f=qs("imageInput").files[0];if(!f||!selectedType||imageSending)return;stopTyping();imageSending=true;qs("imageButton").disabled=true;const fd=new FormData();fd.append("sender",currentUsername);fd.append("receiver",targetKey());fd.append("token",authToken);fd.append("image",f);fd.append("reply_to",replyTo?.id||"");try{const d=await (await fetch("/upload-image",{method:"POST",body:fd})).json();if(!d.success)alert(d.message);cancelReply()}catch{alert("ارسال عکس ناموفق بود")}qs("imageInput").value="";imageSending=false;qs("imageButton").disabled=false}
 
+async function sendSelectedMusic(){const f=qs("musicInput").files[0];if(!f||!selectedType)return;if(f.size>5*1024*1024){alert("حجم موسیقی نباید بیشتر از ۵ مگابایت باشد.");qs("musicInput").value="";return}stopTyping();const fd=new FormData();fd.append("sender",currentUsername);fd.append("receiver",targetKey());fd.append("token",authToken);fd.append("music",f,f.name);fd.append("reply_to",replyTo?.id||"");try{const r=await fetch("/upload-music",{method:"POST",body:fd});const d=await r.json();if(!r.ok||!d.success){alert(d.message||"ارسال موسیقی ناموفق بود");return}if(d.message&&((selectedType==="group"&&d.message.group_id===selectedGroupId)||(selectedType==="user"&&d.message.receiver===selectedUser)))addMessageObj(d.message,true,true);cancelReply()}catch(e){console.error(e);alert("ارسال موسیقی ناموفق بود")}finally{qs("musicInput").value=""}}
+
 async function toggleRecording(){if(isRecording){mediaRecorder.stop();isRecording=false;qs("recordButton").textContent="🎤";qs("recordButton").classList.remove("recording");return}if(!selectedType)return;try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});audioChunks=[];mediaRecorder=new MediaRecorder(stream);mediaRecorder.ondataavailable=e=>{if(e.data.size)audioChunks.push(e.data)};mediaRecorder.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());const blob=new Blob(audioChunks,{type:"audio/webm"});const fd=new FormData();fd.append("sender",currentUsername);fd.append("receiver",targetKey());fd.append("token",authToken);fd.append("audio",blob,"voice.webm");fd.append("reply_to",replyTo?.id||"");try{const d=await (await fetch("/upload-audio",{method:"POST",body:fd})).json();if(d.success&&d.message)addMessageObj(d.message,true);else alert(d.message||"ارسال ویس ناموفق بود")}catch{alert("ارسال ویس ناموفق بود")}cancelReply()};mediaRecorder.start();isRecording=true;qs("recordButton").textContent="⏹";qs("recordButton").classList.add("recording")}catch{alert("دسترسی به میکروفون ممکن نشد")}}
 
 async function openProfile(){openPopup("profilePopup");qs("profileUsername").textContent=currentUsername;qs("displayName").value=currentDisplayName;setAvatar(qs("avatarPreview"),currentAvatar,currentDisplayName,userAvatarUrl(currentUsername));qs("profileMessage").textContent=""}
@@ -723,7 +745,7 @@ async function deleteAvatar(){if(!confirm("عکس پروفایل حذف شود؟
 function openChangePassword(){openPopup("passwordPopup")}async function changePassword(){const a=qs("currentPassword").value,b=qs("newPassword").value,c=qs("confirmPassword").value;if(!a||!b||b!==c){qs("passwordMessage").textContent="اطلاعات رمز درست نیست.";return}const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("current_password",a);fd.append("new_password",b);const d=await (await fetch("/change-password",{method:"POST",body:fd})).json();qs("passwordMessage").textContent=d.message||"انجام شد"}
 
 async function openGroupPopup(){openPopup("groupPopup");qs("groupMessage").textContent="";qs("groupName").value="";qs("groupMemberSearch").value="";await loadGroupMemberCandidates()}
-async function loadGroupMemberCandidates(){const q=qs("groupMemberSearch").value.trim();try{const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(q)}`)).json();const div=qs("members"),picked=new Set([...div.querySelectorAll('input:checked')].map(x=>x.value));div.innerHTML="";(d.users||[]).filter(u=>u.username!==currentUsername).forEach(u=>{const label=document.createElement("label");label.className="memberPick";label.innerHTML=`<input type="checkbox" value="${escapeHtml(u.username)}" ${picked.has(u.username)?"checked":""}> ${escapeHtml(u.display_name)}`;div.appendChild(label)})}catch(e){console.warn(e)}}
+async function loadGroupMemberCandidates(){const q=qs("groupMemberSearch").value.trim().toLowerCase();try{const d=await (await fetch(`/api/recent-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:"no-store"})).json();const div=qs("members"),picked=new Set([...div.querySelectorAll("input:checked")].map(x=>x.value));div.innerHTML="";(d.users||[]).filter(u=>u.username!==currentUsername).filter(u=>!q||u.username.toLowerCase().includes(q)||(u.display_name||"").toLowerCase().includes(q)).forEach(u=>{const label=document.createElement("label");label.className="memberPick";label.innerHTML=`<input type="checkbox" value="${escapeHtml(u.username)}" ${picked.has(u.username)?"checked":""}> ${escapeHtml(u.display_name)}`;div.appendChild(label)});if(!div.children.length)div.innerHTML='<div class="muted">فقط افرادی که قبلاً در چت‌های اخیرت هستند نمایش داده می‌شوند.</div>'}catch(e){console.warn(e)}}
 function showGroupMembers(){
  if(!selectedGroup)return;
  const list=qs("groupMembersList");
@@ -757,10 +779,10 @@ async function loadAddGroupMemberCandidates(){
  const q=qs("addGroupMemberSearch").value.trim();
  const box=qs("addGroupMembersList");
  try{
-   const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(q)}`,{cache:"no-store"})).json();
+   const d=await (await fetch(`/api/recent-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:"no-store"})).json();
    box.innerHTML="";
    const existing=new Set((selectedGroup.members||[]).map(m=>m.username));
-   (d.users||[]).filter(u=>u.username!==currentUsername&&!existing.has(u.username)).forEach(u=>{
+   (d.users||[]).filter(u=>u.username!==currentUsername&&!existing.has(u.username)).filter(u=>!q||u.username.toLowerCase().includes(q.toLowerCase())||(u.display_name||"").toLowerCase().includes(q.toLowerCase())).forEach(u=>{
      const label=document.createElement("label");label.className="memberPick";
      label.innerHTML=`<input type="checkbox" value="${escapeHtml(u.username)}"> ${escapeHtml(u.display_name)} <span class="muted">(${escapeHtml(u.username)})</span>`;
      box.appendChild(label);
@@ -864,6 +886,8 @@ async function openGroupReaders(messageId){
    showGroupReaders(messageId,d.readers||[]);
  }catch(e){console.error(e);alert("دریافت لیست کسانی که پیام را دیده‌اند ناموفق بود.")}
 }
+
+async function startGroupCallPlaceholder(){if(selectedType!=="group"||!selectedGroup)return;const gid=selectedGroup.id;try{const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("group_id",gid);const d=await (await fetch("/group-call/start",{method:"POST",body:fd,cache:"no-store"})).json();if(!d.success)alert(d.message||"ایجاد تماس گروهی ناموفق بود");else if(d.message)addMessageObj(d.message,true,true)}catch(e){console.error(e);alert("ایجاد تماس گروهی ناموفق بود")}}
 
 async function deleteGroup(){
  if(selectedType!=="group"||!selectedGroup)return;
@@ -971,7 +995,7 @@ function formatDate(s){if(!s)return"";let raw=String(s).trim();if(/^\d{4}-\d{2}-
 async function deleteMyAccount(){if(!confirm("حساب شما و اطلاعات مرتبط حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",currentUsername);const d=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(d.success){location.reload()}else qs("accountDeleteMessage").textContent=d.message}
 async function openAdminPopup(){openPopup("adminPopup");const d=await (await fetch(`/api/admin/users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`)).json();const box=qs("adminUsers");box.innerHTML="";(d.users||[]).forEach(u=>{const row=document.createElement("div");row.className="searchItem";const t=document.createElement("div");t.className="itemText";t.innerHTML=`<b>${escapeHtml(u.display_name)}</b><div class="muted">${escapeHtml(u.username)}</div>`;row.appendChild(t);if(u.username!==OWNER_USERNAME){const b=document.createElement("button");b.className="danger";b.textContent="حذف";b.onclick=async()=>{if(!confirm(`حذف حساب ${u.username}؟`))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("target_username",u.username);const x=await (await fetch("/delete-account",{method:"POST",body:fd})).json();if(x.success)openAdminPopup();else qs("adminMessage").textContent=x.message};row.appendChild(b)}box.appendChild(row)})}
 
-async function logout(){try{const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);await fetch("/logout",{method:"POST",body:fd})}catch{}try{socket?.close()}catch{}endCall();location.reload()}
+async function logout(){clearRememberedLogin();try{const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);await fetch("/logout",{method:"POST",body:fd})}catch{}try{socket?.close()}catch{}endCall();location.reload()}
 
 </script>
 
@@ -1185,6 +1209,8 @@ async function logout(){try{const fd=new FormData();fd.append("username",current
     if(m.deleted){const t=document.createElement("div");t.className="deletedText";t.textContent="🚫 این پیام حذف شده است";el.appendChild(t)}
     else if(m.message_type==="image"&&m.media){const img=document.createElement("img");img.className="msgImage";img.loading="lazy";img.decoding="async";img.src=mediaUrlFor(m);img.dataset.messageId=m.id;img.onclick=()=>openImageViewer(m.id,img.src);el.appendChild(img)}
     else if(m.message_type==="audio"&&m.audio){const wrap=document.createElement("div");const a=document.createElement("audio");a.controls=true;a.preload="none";a.src=mediaUrlFor(m);a.className="audioMessage";wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود ویس";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
+    else if(m.message_type==="music"&&m.audio){const wrap=document.createElement("div");wrap.className="musicMessage";const nm=document.createElement("div");nm.className="musicName";nm.textContent=m.message||"🎵 موسیقی";wrap.appendChild(nm);const a=document.createElement("audio");a.controls=true;a.preload="metadata";a.src=mediaUrlFor(m);a.className="audioMessage";wrap.appendChild(a);const dl=document.createElement("a");dl.href=messageFileUrl(m.id,true);dl.textContent="⬇️ دانلود موسیقی";dl.className="downloadAudio";dl.setAttribute("download","");wrap.appendChild(dl);el.appendChild(wrap)}
+    else if(m.message_type==="group_call"){const card=document.createElement("div");card.className="groupCallCard";const b=document.createElement("b");b.textContent="📞 تماس گروهی";const pp=document.createElement("div");pp.textContent=m.message||"یک تماس گروهی ایجاد شد";card.appendChild(b);card.appendChild(pp);const join=document.createElement("button");join.textContent="ورود به تماس";join.onclick=ev=>{ev.stopPropagation();alert("📞 قابلیت تماس گروهی در نسخه بعدی فعال می‌شود.")};card.appendChild(join);el.appendChild(card)}
     else if(m.message_type==="sticker"){const t=document.createElement("div");t.className="stickerMessage";t.textContent=m.message||"🙂";el.appendChild(t)}
     else {const t=document.createElement("div");t.className="messageText";t.textContent=m.message||"";el.appendChild(t)}
     const f=document.createElement("div");f.className="messageFooter";let footerHtml=`<span>${formatDate(m.created_at)}</span>${mine?`<span class="statusTick">${tick(m.status)}</span>`:""}${m.edited?'<span class="edited">(ویرایش شد)</span>':""}`;
@@ -1220,6 +1246,8 @@ async function logout(){try{const fd=new FormData();fd.append("username",current
   window.showHistory=upgradedShowHistory;
 
   installSavedForwardUi();
+  updateActionMenu();
+  setTimeout(()=>autoLoginRemembered(),50);
 })();
 </script>
 <!-- /MSCHAT_SAVED_FORWARD_EXTENSION -->

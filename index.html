@@ -57,7 +57,19 @@ button,input{font:inherit}button{cursor:pointer}
 #videoOverlay{display:none;position:fixed;inset:0;background:rgba(3,7,22,.85);z-index:3000;align-items:center;justify-content:center}.videoCard{position:relative;width:min(950px,95vw);height:min(720px,90vh);background:#081023;border-radius:18px;overflow:hidden}.remoteVideo{width:100%;height:100%;object-fit:contain;background:#000}.localVideo{position:absolute;right:15px;bottom:15px;width:180px;height:130px;object-fit:cover;border-radius:12px;border:2px solid #fff}.videoControls{position:absolute;left:0;right:0;bottom:12px;text-align:center}.videoControls button{padding:10px 15px;border:0;border-radius:10px;background:#ffdede}
 #imageViewer{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:3500;align-items:center;justify-content:center;padding:20px}.fullImage{max-width:95vw;max-height:95vh;border-radius:10px}.membersList{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}.memberRow{display:flex;align-items:center;gap:9px;padding:8px;border-radius:10px;background:#f4f5fb}.memberMeta{flex:1}.memberMeta small{display:block;opacity:.65}
 @media(max-width:760px){#chat{width:calc(100% - 10px);height:calc(100vh - 20px);min-height:0;margin:10px auto;border-radius:16px}#sidebar{width:35%;min-width:125px;padding:8px}#chatArea{width:65%}.sideBtn{font-size:11px}.message{max-width:88%;font-size:13px}.callBtn{padding:7px 8px;font-size:10px}.avatar{width:34px;height:34px;font-size:16px}.itemName{font-size:12px}.itemStatus{font-size:9px}#chatHeader{min-height:60px;padding:7px 9px}.chatTitle{font-size:13px}#sendArea{padding:7px}#sendArea button{padding:9px}.localVideo{width:120px;height:90px}}
- .rememberRow{width:100%;display:flex;align-items:center;justify-content:flex-start;gap:9px;margin:10px 0 4px;padding:8px 10px;border:1px solid #e1e4ee;border-radius:10px;background:#f7f8fc;font-size:13px;line-height:1.4;opacity:.95;cursor:pointer;user-select:none;text-align:right}.rememberRow input{width:17px!important;height:17px!important;margin:0!important;accent-color:#4e62dd;flex:none}.rememberRow span{flex:1}.actionWrap{position:relative;display:inline-flex}.actionMenu{display:none;position:absolute;right:0;bottom:48px;min-width:190px;background:rgba(255,255,255,.98);border:1px solid #ddd;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:7px;z-index:1800}.actionMenu.show{display:flex;flex-direction:column;gap:5px}.actionMenu button{border:0;background:#f5f6fb;border-radius:9px;padding:9px;text-align:right;cursor:pointer}.actionMenu button:hover{background:#e8ebff}.musicMessage{width:min(320px,100%);margin-top:5px}.musicName{font-size:12px;margin-bottom:5px;word-break:break-word}.groupCallCard{padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#f2f5ff,#eefaf5);border:1px solid #dfe4ff}.groupCallCard b{display:block;margin-bottom:5px}.groupCallCard button{border:0;border-radius:9px;padding:7px 10px;cursor:pointer} .successMessage{color:#0a8f3d !important;font-weight:bold;}</style>
+ .rememberRow{width:100%;display:flex;align-items:center;justify-content:flex-start;gap:9px;margin:10px 0 4px;padding:8px 10px;border:1px solid #e1e4ee;border-radius:10px;background:#f7f8fc;font-size:13px;line-height:1.4;opacity:.95;cursor:pointer;user-select:none;text-align:right}.rememberRow input{width:17px!important;height:17px!important;margin:0!important;accent-color:#4e62dd;flex:none}.rememberRow span{flex:1}.actionWrap{position:relative;display:inline-flex}.actionMenu{display:none;position:absolute;right:0;bottom:48px;min-width:190px;background:rgba(255,255,255,.98);border:1px solid #ddd;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:7px;z-index:1800}.actionMenu.show{display:flex;flex-direction:column;gap:5px}.actionMenu button{border:0;background:#f5f6fb;border-radius:9px;padding:9px;text-align:right;cursor:pointer}.actionMenu button:hover{background:#e8ebff}.musicMessage{width:min(320px,100%);margin-top:5px}.musicName{font-size:12px;margin-bottom:5px;word-break:break-word}.groupCallCard{padding:10px 12px;border-radius:12px;background:linear-gradient(135deg,#f2f5ff,#eefaf5);border:1px solid #dfe4ff}.groupCallCard b{display:block;margin-bottom:5px}.groupCallCard button{border:0;border-radius:9px;padding:7px 10px;cursor:pointer} .successMessage{color:#0a8f3d !important;font-weight:bold;}
+/* Reply jump highlight: very visible, then fades away */
+.message.replyJumpHighlight{
+  position:relative;
+  z-index:8;
+  outline:4px solid rgba(255,193,7,.98);
+  outline-offset:5px;
+  box-shadow:0 0 0 8px rgba(255,193,7,.18),0 0 30px 10px rgba(255,193,7,.58);
+  animation:replyJumpPulse 1.15s ease-in-out 2;
+}
+@keyframes replyJumpPulse{0%,100%{transform:scale(1);filter:brightness(1)}35%{transform:scale(1.025);filter:brightness(1.22)}70%{transform:scale(1.012);filter:brightness(1.08)}}
+
+</style>
 
 <style id="mschatUltimateStyles">
 #musicInput,#imageInput{display:none!important}
@@ -734,7 +746,7 @@ function openImageViewer(id,src){const v=qs("fullImage");v.onerror=()=>{v.onerro
 function showHistory(messages){
  const box=qs("messages"); box.innerHTML=""; messageMap.clear(); messageDataMap.clear(); const frag=document.createDocumentFragment();
  for(const m of(messages||[])){const mine=m.sender===currentUsername;const el=document.createElement("div");el.className=`message ${mine?"mine":"theirs"}`;el.dataset.id=m.id;messageMap.set(String(m.id),el);messageDataMap.set(String(m.id),m);renderMessageElement(el,m,mine);frag.appendChild(el)}
- box.appendChild(frag);scrollBottom();
+ box.appendChild(frag);scrollBottom();requestAnimationFrame(()=>{scrollBottom();requestAnimationFrame(scrollBottom);});setTimeout(scrollBottom,180);setTimeout(scrollBottom,500);
 }
 function addMessageObj(m,mine,forceScroll=false){
  const key=String(m.id),old=messageMap.get(key);
@@ -754,7 +766,7 @@ function renderMessageElement(el,m,mine){
    if(preview.length>90)preview=preview.slice(0,90)+"…";
    q.textContent=`↩️ پاسخ به ${originalName}${preview?": "+preview:""}`;
    q.title="برای رفتن به پیام اصلی کلیک کن";
-   q.onclick=()=>qs("messages").querySelector(`[data-id="${m.reply_to}"]`)?.scrollIntoView({behavior:"smooth",block:"center"});
+   q.onclick=()=>jumpToMessageWithHighlight(m.reply_to);
    el.appendChild(q)
  }
  if(m.deleted){const t=document.createElement("div");t.className="deletedText";t.textContent="🚫 این پیام حذف شده است";el.appendChild(t)}
@@ -774,6 +786,16 @@ function replaceMessage(m){const key=String(m.id);messageDataMap.set(key,m);cons
 function removeMessage(id){const key=String(id),old=messageDataMap.get(key);if(!old)return;const updated={...old,deleted:true,message:"",media:null,audio:null};messageDataMap.set(key,updated);const el=messageMap.get(key);if(el)renderMessageElement(el,updated,updated.sender===currentUsername)}
 function findMessageById(id){return messageDataMap.get(String(id))||null}
 function scrollBottom(){const d=qs("messages");d.scrollTop=d.scrollHeight}
+function jumpToMessageWithHighlight(messageId){
+ const box=qs("messages");
+ const target=box?.querySelector(`[data-id="${CSS.escape(String(messageId))}"]`);
+ if(!target)return;
+ target.classList.remove("replyJumpHighlight");
+ void target.offsetWidth;
+ target.scrollIntoView({behavior:"smooth",block:"center"});
+ setTimeout(()=>{target.classList.remove("replyJumpHighlight");void target.offsetWidth;target.classList.add("replyJumpHighlight");},180);
+ setTimeout(()=>target.classList.remove("replyJumpHighlight"),2600);
+}
 function tick(s){return s==="read"?"✓✓":"✓"}
 let readMarkTimer=null;
 function markMessagesRead(sender){clearTimeout(readMarkTimer);readMarkTimer=setTimeout(()=>markDirectRead(sender),80)}
@@ -1294,7 +1316,7 @@ window.renderMessageElement=function(el,m,mine){
 const originalShowHistory=window.showHistory;window.showHistory=function(messages){
  const box=$('messages');box.innerHTML='';messageMap.clear();messageDataMap.clear();const frag=document.createDocumentFragment();
  for(const m of(messages||[])){const mine=m.sender===currentUsername;const el=document.createElement('div');el.className=`message ${mine?'mine':'theirs'}`;el.dataset.id=m.id;messageMap.set(String(m.id),el);messageDataMap.set(String(m.id),m);window.renderMessageElement(el,m,mine);frag.appendChild(el)}
- box.appendChild(frag);scrollBottom();
+ box.appendChild(frag);scrollBottom();requestAnimationFrame(()=>{scrollBottom();requestAnimationFrame(scrollBottom);});setTimeout(scrollBottom,180);setTimeout(scrollBottom,500);
  if(savedOpenMessageId){const target=messageMap.get(String(savedOpenMessageId));if(target){requestAnimationFrame(()=>{target.scrollIntoView({behavior:'smooth',block:'center'});target.style.outline='3px solid #6a79ff';setTimeout(()=>target.style.outline='',1500)})}savedOpenMessageId=null;}
 };
 // saved chat close when a normal chat is selected

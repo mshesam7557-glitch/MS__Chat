@@ -132,7 +132,7 @@ button,.sideBtn,.userItem,.groupItem,.searchItem{transition:transform .12s ease,
 <main id="chatArea">
 <header id="chatHeader">
 <img id="chatAvatar" class="avatar" title="مشاهده پروفایل" alt="" style="cursor:pointer" onclick="viewSelectedProfile()">
-<div class="chatTitleWrap"><div id="chatTitle" class="chatTitle">برای شروع، یک کاربر را از لیست انتخاب کن 👈</div><div id="chatSub" class="chatSub"></div><div id="typingIndicator" class="typingIndicator"></div></div>
+<div class="chatTitleWrap"><div id="chatTitle" class="chatTitle"></div><div id="chatSub" class="chatSub"></div><div id="typingIndicator" class="typingIndicator"></div></div>
 <button id="callButton" class="callBtn" onclick="startCall('audio')" disabled>📞</button>
 <button id="videoButton" class="callBtn videoBtn" onclick="startCall('video')" disabled>📹</button>
 <button id="membersButton" class="callBtn" onclick="showGroupMembers()" style="display:none">👥</button><button id="deleteGroupButton" class="callBtn danger" onclick="deleteGroup()" style="display:none">🗑️</button><button id="deleteConversationButton" class="callBtn danger" onclick="deleteConversation()" style="display:none" title="حذف گفتگو">🗑️</button>
@@ -496,8 +496,8 @@ async function handleSocket(d){
    if(selectedType==="group"&&String(selectedGroupId)===String(d.group.id)){setHeader(d.group.name,d.group.avatar,groupAvatarUrl(d.group.id),"👥 "+(d.group.members_count||0)+" عضو");qs("addGroupMembersButton").style.display=d.group.owner===currentUsername?"inline-block":"none";}
    return
  }
- if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
- if(d.type==="group-removed"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));groupMap.delete(String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){stopTyping();selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";cancelReply();qs("typingIndicator").classList.remove("show");enableComposer(false);qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","")}renderGroups();return}
+ if(d.type==="group-deleted"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";setHeader("","","");enableComposer(false);qs("membersButton").style.display="none"}renderGroups();return}
+ if(d.type==="group-removed"){groupsCache=groupsCache.filter(g=>String(g.id)!==String(d.group_id));groupMap.delete(String(d.group_id));if(selectedType==="group"&&String(selectedGroupId)===String(d.group_id)){stopTyping();selectedType="";selectedGroupId=null;selectedGroup=null;qs("messages").innerHTML="";cancelReply();qs("typingIndicator").classList.remove("show");enableComposer(false);qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";setHeader("","","")}renderGroups();return}
  if(d.type==="message"){
    const m=d.message;
    if((selectedType==="group"&&m.group_id===selectedGroupId)||(selectedType==="user"&&m.sender===selectedUser)){
@@ -767,7 +767,7 @@ async function deleteConversation(){
   qs("messages").innerHTML="";cancelReply();stopTyping();qs("typingIndicator").classList.remove("show");enableComposer(false);
   qs("deleteConversationButton").style.display="none";
   qs("membersButton").style.display="none";qs("deleteGroupButton").style.display="none";
-  setHeader("برای شروع، یک کاربر را از لیست انتخاب کن 👈","","");
+  setHeader("","","");
  }catch(e){console.error(e);alert(e.message||"حذف گفتگو ناموفق بود.")}
 }
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}

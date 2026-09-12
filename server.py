@@ -1634,48 +1634,6 @@ async def upload_audio(
         return {"success": False, "message": "آپلود ویس ناموفق بود."}
 
 
-@app.post("/upload-music")
-async def upload_music(
-    sender: str = Form(...),
-    receiver: str = Form(...),
-    token: str = Form(...),
-    music: UploadFile = File(...),
-    reply_to: str = Form(""),
-):
-    if not verify_token(sender, token):
-        return {"success": False, "message": "احراز هویت ناموفق بود."}
-    if receiver.startswith("group:"):
-        try: gid=int(receiver.split(":",1)[1])
-        except (TypeError,ValueError): return {"success":False,"message":"گروه نامعتبر است."}
-        if not await asyncio.to_thread(is_group_member, gid, sender):
-            return {"success":False,"message":"شما عضو این گروه نیستید."}
-        group_id=gid; target_receiver=""
-    else:
-        group_id=None; target_receiver=(receiver or "").strip()
-        if not await asyncio.to_thread(user_exists,target_receiver):
-            return {"success":False,"message":"گیرنده وجود ندارد."}
-    content=await music.read()
-    if not content: return {"success":False,"message":"فایل موسیقی خالی است."}
-    if len(content)>5*1024*1024: return {"success":False,"message":"حجم موسیقی نباید بیشتر از ۵ مگابایت باشد."}
-    ctype=(music.content_type or "application/octet-stream").lower()
-    if not ctype.startswith("audio/"):
-        return {"success":False,"message":"فرمت فایل باید صوتی باشد."}
-    import mimetypes
-    ext=os.path.splitext(music.filename or "")[1].lower() or mimetypes.guess_extension(ctype) or ".bin"
-    path=f"music/{uuid.uuid4()}{ext}"
-    try:
-        await asyncio.to_thread(upload_storage,path,content,ctype)
-        display_name=(music.filename or "موسیقی").strip()[:160]
-        rid=int(reply_to) if reply_to else None
-        mid=await asyncio.to_thread(save_message,sender,target_receiver,display_name,"music",None,add_storage_prefix(path),rid,group_id)
-        msg=await asyncio.to_thread(get_message,mid,sender)
-        asyncio.create_task(deliver_message_safe(msg))
-        return {"success":True,"message":msg}
-    except Exception as error:
-        print("Music upload error:",repr(error))
-        return {"success":False,"message":"ارسال موسیقی ناموفق بود."}
-
-
 async def group_recipients(group_id, sender):
     with get_db() as connection:
         with connection.cursor() as cursor:
@@ -1816,7 +1774,7 @@ async def deliver_message(msg):
         sender_name = await asyncio.to_thread(get_push_user_display_name, msg["sender"])
         group_name = await asyncio.to_thread(get_push_group_name, msg["group_id"])
         push_title = f"👥 {group_name} • {sender_name}"
-        push_body = ("📞 تماس گروهی" if msg.get("message_type")=="group_call" else "🎵 موسیقی" if msg.get("message_type")=="music" else (msg.get("message") or "📎 فایل جدید"))
+        push_body = msg.get("message") or "📎 فایل جدید"
         for username in recipients:
             asyncio.create_task(send_push_to_user(username, push_title, push_body, "/"))
             asyncio.create_task(send_to(username, {
@@ -1841,7 +1799,7 @@ async def deliver_message(msg):
     await send_to(msg["sender"], {"type": "sent", "message": msg})
     sender_name = await asyncio.to_thread(get_push_user_display_name, msg["sender"])
     push_title = f"📩 پیام از {sender_name}"
-    push_body = ("🎵 موسیقی" if msg.get("message_type")=="music" else (msg.get("message") or "📎 فایل جدید"))
+    push_body = msg.get("message") or "📎 فایل جدید"
     asyncio.create_task(send_push_to_user(msg["receiver"], push_title, push_body, "/"))
     await send_to(msg["sender"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["sender"])})
     await send_to(msg["receiver"], {"type":"recent-users","users":await asyncio.to_thread(get_recent_chat_users,msg["receiver"])})
@@ -2098,21 +2056,6 @@ async def delete_group(
     for u in members:
         await send_to(u, {"type": "group-deleted", "group_id": group_id})
     return {"success": True, "group_id": group_id}
-
-
-@app.post("/group-call/start")
-async def start_group_call(username: str = Form(...), token: str = Form(...), group_id: int = Form(...)):
-    if not verify_token(username, token):
-        return {"success":False,"message":"احراز هویت ناموفق بود."}
-    if not await asyncio.to_thread(is_group_member,group_id,username):
-        return {"success":False,"message":"شما عضو این گروه نیستید."}
-    sender_name=await asyncio.to_thread(_get_sender_display_name,username)
-    text=f"یک تماس گروهی از طرف {sender_name} ایجاد شد."
-    mid=await asyncio.to_thread(save_message,username,"",text,"group_call",None,None,None,group_id)
-    msg=await asyncio.to_thread(get_message,mid,username)
-    if msg:
-        asyncio.create_task(deliver_message_safe(msg))
-    return {"success":True,"message":msg}
 
 
 @app.post("/edit-message")
@@ -2891,7 +2834,7 @@ def _copy_media_for_forward(message):
         content=resp.content
         content_type=resp.headers.get("content-type", content_type)
 
-    if message.get("message_type") in {"audio","music"}:
+    if message.get("message_type")=="audio":
         ext=".webm"
         if not content_type or content_type=="application/octet-stream":
             content_type="audio/webm"
@@ -3026,7 +2969,7 @@ async def api_forward_message(
         # logic above keeps a media object as long as another message references it,
         # so forwarding stays fast and does not duplicate large voice/image files.
         media=source_row["media"] if source_row["message_type"]=="image" else None
-        audio=source_row["audio"] if source_row["message_type"] in {"audio","music"} else None
+        audio=source_row["audio"] if source_row["message_type"]=="audio" else None
         original_source_id=source_row.get("forwarded_from_message_id") or int(source_row["id"])
 
         receiver="" if target_kind=="group" else target_value
@@ -3043,3 +2986,299 @@ async def api_forward_message(
     except Exception as error:
         print("Forward message error:",repr(error))
         return {"success":False,"message":f"خطا در هدایت پیام: {type(error).__name__}"}
+
+
+# =========================================================
+# EXTRA FEATURES: saved chat, self-hide messages, reports, bio, music
+# =========================================================
+def ensure_extra_feature_schema():
+    with psycopg.connect(DATABASE_URL, row_factory=dict_row, connect_timeout=20) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SET statement_timeout = 15000")
+            cursor.execute("SET lock_timeout = 5000")
+            cursor.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT DEFAULT ''")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS hidden_messages (
+                    username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                    hidden_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY(username, message_id)
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS saved_chat_messages (
+                    id BIGSERIAL PRIMARY KEY,
+                    username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                    message TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS message_reports (
+                    id BIGSERIAL PRIMARY KEY,
+                    reporter_username TEXT NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+                    message_id BIGINT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+                    reason TEXT NOT NULL,
+                    status TEXT DEFAULT 'open',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_hidden_messages_user ON hidden_messages(username, message_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_reports_status ON message_reports(status, created_at DESC)")
+        connection.commit()
+
+# This runs after the original schema initialization, including on existing databases.
+ensure_extra_feature_schema()
+
+# ----- Hidden message helpers -----
+def _hidden_message_ids(username, message_ids):
+    if not username or not message_ids:
+        return set()
+    ids=[int(x) for x in message_ids]
+    placeholders=','.join(['%s']*len(ids))
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(f"SELECT message_id FROM hidden_messages WHERE username=%s AND message_id IN ({placeholders})", [username,*ids])
+            return {int(r['message_id']) for r in cursor.fetchall()}
+
+def get_direct_history(user1, user2):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(_message_select_sql() + """
+                WHERE group_id IS NULL
+                  AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
+                  AND NOT EXISTS (
+                      SELECT 1 FROM hidden_messages h
+                      WHERE h.username=%s AND h.message_id=messages.id
+                  )
+                ORDER BY id DESC LIMIT %s
+            """, (user1,user2,user2,user1,user1,MAX_HISTORY_MESSAGES))
+            rows=cursor.fetchall()
+    return rows_to_messages(rows,viewer=user1)
+
+def get_group_history(group_id, viewer=None):
+    with get_db() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(_message_select_sql() + """
+                WHERE group_id=%s
+                  AND NOT EXISTS (
+                      SELECT 1 FROM hidden_messages h
+                      WHERE h.username=%s AND h.message_id=messages.id
+                  )
+                ORDER BY id DESC LIMIT %s
+            """, (group_id, viewer or '', MAX_HISTORY_MESSAGES))
+            rows=cursor.fetchall()
+            messages=rows_to_messages(rows,viewer=viewer)
+            own_ids=[int(m['id']) for m in messages if viewer and m.get('sender')==viewer and m.get('group_id')]
+            if own_ids:
+                placeholders=','.join(['%s']*len(own_ids))
+                cursor.execute(f"""
+                    SELECT r.message_id,r.username,COALESCE(u.display_name,u.username) AS display_name,r.read_at
+                    FROM group_message_reads r JOIN users u ON u.username=r.username
+                    WHERE r.message_id IN ({placeholders}) ORDER BY r.message_id,r.read_at,r.username
+                """, own_ids)
+                rr=cursor.fetchall()
+            else: rr=[]
+    rb={}
+    for r in rr: rb.setdefault(str(r['message_id']),[]).append({'username':r['username'],'display_name':r['display_name'] or r['username'],'read_at':now_iso(r['read_at'])})
+    for m in messages:
+        if m.get('group_id') and m.get('sender')==viewer:
+            m['readers']=rb.get(str(m['id']),[]); m['read_count']=len(m['readers'])
+    return messages
+
+@app.post('/api/hide-message-for-me')
+async def api_hide_message_for_me(username: str=Form(...), token: str=Form(...), message_id: int=Form(...)):
+    if not verify_token(username,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    try:
+        row=await asyncio.to_thread(_get_message_row_with_access,message_id,username)
+        if not row: return {'success':False,'message':'این پیام در دسترس نیست.'}
+        if row['sender']==username: return {'success':False,'message':'برای پیام خودت از حذف پیام استفاده کن.'}
+        with get_db() as c:
+            with c.cursor() as cur:
+                cur.execute('INSERT INTO hidden_messages(username,message_id) VALUES(%s,%s) ON CONFLICT DO NOTHING',(username,message_id))
+            c.commit()
+        return {'success':True,'message_id':message_id}
+    except Exception as e:
+        print('Hide message error:',repr(e)); return {'success':False,'message':'حذف پیام برای خودت ناموفق بود.'}
+
+# ----- Bio / public profile -----
+@app.get('/api/public-profile')
+async def api_public_profile(username: str, token: str, target: str):
+    if not verify_token(username,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    target=(target or '').strip()
+    info=await asyncio.to_thread(get_user_info,target)
+    if not info: return {'success':False,'message':'کاربر پیدا نشد.'}
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute('SELECT username,COALESCE(display_name,username) display_name,avatar,COALESCE(bio,\'\') bio,last_seen FROM users WHERE username=%s',(target,))
+            r=cur.fetchone()
+    return {'success':True,'profile':{'username':r['username'],'display_name':r['display_name'],'avatar':r['avatar'],'bio':r['bio'] or '','last_seen':now_iso(r['last_seen']),'online':bool(connections.get(target))}}
+
+@app.post('/api/update-bio')
+async def api_update_bio(username: str=Form(...), token: str=Form(...), bio: str=Form('')):
+    if not verify_token(username,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    bio=(bio or '').strip()
+    if len(bio)>250: return {'success':False,'message':'بیوگرافی نباید بیشتر از ۲۵۰ کاراکتر باشد.'}
+    with get_db() as c:
+        with c.cursor() as cur: cur.execute('UPDATE users SET bio=%s WHERE username=%s',(bio,username))
+        c.commit()
+    return {'success':True,'bio':bio}
+
+# ----- Music upload -----
+@app.post('/upload-music')
+async def upload_music(sender: str=Form(...), receiver: str=Form(...), token: str=Form(...), music: UploadFile=File(...), reply_to: str=Form('')):
+    if not verify_token(sender,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    receiver=(receiver or '').strip()
+    if receiver.startswith('group:'):
+        try: gid=int(receiver.split(':',1)[1])
+        except: return {'success':False,'message':'گروه نامعتبر است.'}
+        if not await asyncio.to_thread(is_group_member,gid,sender): return {'success':False,'message':'شما عضو این گروه نیستید.'}
+        target_receiver=''
+    else:
+        gid=None
+        if not await asyncio.to_thread(user_exists,receiver): return {'success':False,'message':'گیرنده وجود ندارد.'}
+        target_receiver=receiver
+    content=await music.read()
+    if not content: return {'success':False,'message':'فایل موسیقی خالی است.'}
+    if len(content)>5*1024*1024: return {'success':False,'message':'حجم موسیقی نباید بیشتر از ۵ مگابایت باشد.'}
+    ctype=(music.content_type or 'audio/mpeg').lower()
+    if ctype not in ALLOWED_AUDIO_TYPES: ctype='audio/mpeg'
+    ext='.mp3' if ctype=='audio/mpeg' else ('.ogg' if ctype=='audio/ogg' else '.webm')
+    path=f'music/{uuid.uuid4()}{ext}'
+    try:
+        await asyncio.to_thread(upload_storage,path,content,ctype)
+        rid=int(reply_to) if reply_to else None
+        mid=await asyncio.to_thread(save_message,sender,target_receiver,music.filename or '🎵 موسیقی','music',None,add_storage_prefix(path),rid,gid)
+        msg=await asyncio.to_thread(get_message,mid,sender)
+        asyncio.create_task(deliver_message_safe(msg))
+        return {'success':True,'message':msg}
+    except Exception as e:
+        print('Music upload error:',repr(e)); return {'success':False,'message':f'ارسال موسیقی ناموفق بود: {type(e).__name__}'}
+
+# ----- Saved chat -----
+def get_saved_chat(username, limit=300):
+    items=[]
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute("""
+                SELECT m.id,m.sender,m.receiver,m.message,m.audio,m.media,m.status,
+                       m.message_type,m.reply_to,m.edited,m.deleted,m.group_id,m.created_at,
+                       m.forwarded_from_username,m.forwarded_from_name,m.forwarded_from_message_id,
+                       sm.saved_at,
+                       COALESCE(su.display_name,su.username) AS sender_display_name,
+                       g.name AS group_name,
+                       CASE WHEN m.group_id IS NULL AND m.sender=%s THEN m.receiver ELSE NULL END AS other_username,
+                       CASE WHEN m.group_id IS NULL AND m.sender=%s THEN COALESCE(ou.display_name,ou.username) ELSE NULL END AS other_display_name
+                FROM saved_messages sm
+                JOIN messages m ON m.id=sm.message_id
+                LEFT JOIN users su ON su.username=m.sender
+                LEFT JOIN users ou ON ou.username=CASE WHEN m.group_id IS NULL AND m.sender=%s THEN m.receiver ELSE m.sender END
+                LEFT JOIN groups g ON g.id=m.group_id
+                WHERE sm.username=%s
+                ORDER BY sm.saved_at ASC, sm.id ASC
+                LIMIT %s
+            """,(username,username,username,username,limit))
+            bookmarks=cur.fetchall()
+            cur.execute("SELECT id,message,created_at FROM saved_chat_messages WHERE username=%s ORDER BY id ASC LIMIT %s",(username,limit))
+            notes=cur.fetchall()
+    for r in bookmarks:
+        m=message_row_to_dict(r,saved=True)
+        m['saved_chat_kind']='bookmark'; m['saved_at']=now_iso(r.get('saved_at')); m['sender_display_name']=r.get('sender_display_name') or r['sender']
+        m['source_type']='group' if m.get('group_id') else 'user'; m['source_group_name']=r.get('group_name'); m['direct_other_username']=r.get('other_username')
+        m['direct_other_display_name']=r.get('other_display_name') or r.get('other_username')
+        m['saved_chat_mine']=m.get('sender')==username
+        items.append(m)
+    for r in notes:
+        items.append({'id':f"note:{r['id']}",'saved_note_id':r['id'],'saved_chat_kind':'note','sender':username,'receiver':username,'message':r['message'],'message_type':'text','created_at':now_iso(r['created_at']),'status':'read','saved':False,'group_id':None,'deleted':False,'saved_chat_mine':True})
+    items.sort(key=lambda x:x.get('saved_at') or x.get('created_at') or '')
+    return items[-limit:]
+
+@app.get('/api/saved-chat')
+async def api_saved_chat(username: str, token: str):
+    if not verify_token(username,token): return {'success':False,'messages':[]}
+    return {'success':True,'messages':await asyncio.to_thread(get_saved_chat,username)}
+
+@app.post('/api/saved-chat/send')
+async def api_saved_chat_send(username: str=Form(...), token: str=Form(...), message: str=Form(...)):
+    if not verify_token(username,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    text=(message or '').strip()
+    if not text or len(text)>5000: return {'success':False,'message':'متن پیام معتبر نیست.'}
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute('INSERT INTO saved_chat_messages(username,message) VALUES(%s,%s) RETURNING id,created_at',(username,text))
+            row=cur.fetchone()
+        c.commit()
+    return {'success':True,'message':{'id':f"note:{row['id']}",'saved_note_id':row['id'],'saved_chat_kind':'note','sender':username,'receiver':username,'message':text,'message_type':'text','created_at':now_iso(row['created_at']),'status':'read','saved':False,'group_id':None,'deleted':False,'saved_chat_mine':True}}
+
+@app.post('/api/saved-chat/delete-note')
+async def api_saved_chat_delete_note(username: str=Form(...), token: str=Form(...), note_id: int=Form(...)):
+    if not verify_token(username,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    with get_db() as c:
+        with c.cursor() as cur: cur.execute('DELETE FROM saved_chat_messages WHERE id=%s AND username=%s',(note_id,username))
+        c.commit()
+    return {'success':True}
+
+# ----- Reporting -----
+@app.post('/api/report-message')
+async def api_report_message(username: str=Form(...), token: str=Form(...), message_id: int=Form(...), reason: str=Form(...)):
+    if not verify_token(username,token): return {'success':False,'message':'احراز هویت ناموفق بود.'}
+    row=await asyncio.to_thread(_get_message_row_with_access,message_id,username)
+    if not row: return {'success':False,'message':'این پیام برای گزارش در دسترس نیست.'}
+    if row['sender']==username: return {'success':False,'message':'نمی‌توانی پیام خودت را گزارش کنی.'}
+    reason=(reason or '').strip() or 'محتوای نامناسب'
+    if len(reason)>500: reason=reason[:500]
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute('SELECT 1 FROM message_reports WHERE reporter_username=%s AND message_id=%s AND status=\'open\'',(username,message_id))
+            if cur.fetchone(): return {'success':True,'message':'گزارش قبلاً ثبت شده است.'}
+            cur.execute('INSERT INTO message_reports(reporter_username,message_id,reason) VALUES(%s,%s,%s)',(username,message_id,reason))
+        c.commit()
+    return {'success':True,'message':'گزارش ثبت شد.'}
+
+def _admin_ok(username,token): return username==OWNER_USERNAME and verify_token(username,token)
+
+@app.get('/api/admin/reports')
+async def api_admin_reports(username: str, token: str):
+    if not _admin_ok(username,token): return {'success':False,'reports':[],'message':'دسترسی غیرمجاز.'}
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute("""
+                SELECT r.id,r.message_id,r.reason,r.status,r.created_at,r.reporter_username,
+                       m.sender,m.receiver,m.group_id,m.message,m.message_type,
+                       COALESCE(su.display_name,su.username) AS sender_name,
+                       COALESCE(ru.display_name,ru.username) AS reporter_name,
+                       g.name AS group_name
+                FROM message_reports r JOIN messages m ON m.id=r.message_id
+                LEFT JOIN users su ON su.username=m.sender LEFT JOIN users ru ON ru.username=r.reporter_username
+                LEFT JOIN groups g ON g.id=m.group_id
+                ORDER BY r.created_at DESC
+                LIMIT 200
+            """)
+            rows=cur.fetchall()
+    out=[]
+    for r in rows:
+        out.append({k:(now_iso(v) if k=='created_at' else v) for k,v in r.items()})
+    return {'success':True,'reports':out}
+
+@app.get('/api/admin/report-history')
+async def api_admin_report_history(username: str, token: str, message_id: int):
+    if not _admin_ok(username,token): return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute('SELECT sender,receiver,group_id FROM messages WHERE id=%s',(message_id,)); row=cur.fetchone()
+    if not row: return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
+    if row['group_id']:
+        msgs=await asyncio.to_thread(get_group_history,row['group_id'],username)
+        return {'success':True,'kind':'group','group_id':row['group_id'],'messages':msgs}
+    other=row['sender'] if row['sender']!=username else row['receiver']
+    msgs=await asyncio.to_thread(get_direct_history,row['sender'],other)
+    return {'success':True,'kind':'user','user':other,'messages':msgs}
+
+@app.post('/api/admin/report-status')
+async def api_admin_report_status(username: str=Form(...), token: str=Form(...), report_id: int=Form(...), status: str=Form(...)):
+    if not _admin_ok(username,token): return {'success':False,'message':'دسترسی غیرمجاز.'}
+    if status not in {'open','reviewed','closed'}: return {'success':False,'message':'وضعیت نامعتبر.'}
+    with get_db() as c:
+        with c.cursor() as cur: cur.execute('UPDATE message_reports SET status=%s WHERE id=%s',(status,report_id))
+        c.commit()
+    return {'success':True}

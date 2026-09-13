@@ -109,29 +109,6 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
 
-THEME_FILES = {
-    "theme_neon.jpg", "theme_forest.jpg", "theme_sunset.jpg",
-    "theme_ocean.jpg", "theme_galaxy.jpg", "theme_city.jpg",
-    "theme_winter.jpg",
-}
-
-def _make_theme_route(filename):
-    async def _serve_theme():
-        path = os.path.join(os.getcwd(), filename)
-        if not os.path.isfile(path):
-            return Response(status_code=404)
-        return FileResponse(path, media_type="image/jpeg")
-    return _serve_theme
-
-for _theme_file in THEME_FILES:
-    app.add_api_route(
-        f"/{_theme_file}",
-        _make_theme_route(_theme_file),
-        methods=["GET"],
-        name=f"theme_{_theme_file}",
-    )
-
-
 
 DB_POOL_SIZE = 4
 
@@ -1519,11 +1496,14 @@ async def message_file(message_id: int, username: str, token: str, download: int
     if not row or row["deleted"]:
         return Response(status_code=404, content="File not found")
 
-    allowed = False
-    if row["group_id"]:
-        allowed = is_group_member(row["group_id"], username)
-    else:
-        allowed = username in {row["sender"], row["receiver"]}
+    # The owner/admin can inspect reported media in the moderation history.
+    # Normal users still follow the original sender/receiver/group access rules.
+    allowed = username == OWNER_USERNAME
+    if not allowed:
+        if row["group_id"]:
+            allowed = is_group_member(row["group_id"], username)
+        else:
+            allowed = username in {row["sender"], row["receiver"]}
     if not allowed:
         return Response(status_code=403, content="Forbidden")
 
@@ -2027,6 +2007,17 @@ async def add_group_members(
             for member in all_members
         ], return_exceptions=True)
 
+        # Announce every newly-added member inside the group itself.
+        for member in valid:
+            member_info = next((m for m in info.get("members", []) if m["username"] == member), None)
+            display = (member_info or {}).get("display_name") or member
+            system_id = await asyncio.to_thread(
+                save_message, username, "", f"👤 {display} به گروه اضافه شد", "system", None, None, None, group_id
+            )
+            system_msg = await asyncio.to_thread(get_message, system_id)
+            if system_msg:
+                await deliver_message(system_msg)
+
         return {"success": True, "group": info, "added": valid}
     except Exception as error:
         print("Add group members error:", repr(error))
@@ -2070,6 +2061,24 @@ async def remove_group_member(
         for member in remaining:
             await send_to(member, {"type":"group-info", "group":info})
             await send_to(member, {"type":"groups", "groups":await asyncio.to_thread(get_user_groups, member)})
+
+        # Announce the removal to the members who remain in the group.
+        member_info = next((m for m in (info or {}).get("members", []) if m["username"] == member_username), None)
+        display = (member_info or {}).get("display_name") or member_username
+        # If the user has already been removed, their profile is still available from users.
+        if not member_info:
+            try:
+                u = await asyncio.to_thread(get_user_info, member_username)
+                display = (u or {}).get("display_name") or member_username
+            except Exception:
+                pass
+        if remaining:
+            system_id = await asyncio.to_thread(
+                save_message, username, "", f"👤 {display} از گروه حذف شد", "system", None, None, None, group_id
+            )
+            system_msg = await asyncio.to_thread(get_message, system_id)
+            if system_msg:
+                await deliver_message(system_msg)
         return {"success": True, "group": info, "removed": member_username}
     except Exception as error:
         print("Remove group member error:", repr(error))
@@ -3339,7 +3348,6 @@ async def api_admin_reports(username: str, token: str):
                 FROM message_reports r JOIN messages m ON m.id=r.message_id
                 LEFT JOIN users su ON su.username=m.sender LEFT JOIN users ru ON ru.username=r.reporter_username
                 LEFT JOIN groups g ON g.id=m.group_id
-                WHERE r.status = 'open'
                 ORDER BY r.created_at DESC
                 LIMIT 200
             """)

@@ -1460,5 +1460,223 @@ ensureSavedButton();ensureSavedChatPanel();
 })();
 </script>
 
+
+<style id="msV10FeatureStyles">
+/* V10 — visible action animations */
+@keyframes msDeleteExplode{0%{opacity:1;transform:scale(1) rotate(0);filter:brightness(1)}20%{transform:scale(1.08) rotate(-2deg);filter:brightness(1.7)}45%{opacity:1;transform:scale(1.16) rotate(3deg);filter:brightness(2)}70%{opacity:.55;transform:scale(.72) rotate(-8deg);filter:blur(2px) saturate(1.8)}100%{opacity:0;transform:scale(.05) rotate(25deg);filter:blur(8px)}}
+@keyframes msDeleteTrash{0%{opacity:1;transform:translate(0,0) rotate(0) scale(1)}20%{transform:translate(-4px,-4px) rotate(-4deg) scale(1.02)}55%{transform:translate(28px,45px) rotate(15deg) scale(.72);opacity:.9}100%{transform:translate(115px,135px) rotate(32deg) scale(.05);opacity:0;filter:blur(4px)}}
+@keyframes msEditFlash{0%{box-shadow:0 0 0 0 rgba(64,105,255,0)}35%{box-shadow:0 0 0 8px rgba(64,105,255,.25),0 0 30px rgba(64,105,255,.5)}100%{box-shadow:0 0 0 0 rgba(64,105,255,0)}}
+@keyframes msForwardFlash{0%{transform:scale(1)}35%{transform:translateX(-5px) scale(1.035);box-shadow:0 0 0 6px rgba(121,76,255,.18),0 0 28px rgba(121,76,255,.55)}100%{transform:none}}
+@keyframes msSaveFlash{0%{transform:scale(1)}45%{transform:scale(1.045) rotate(-1deg);box-shadow:0 0 0 7px rgba(255,193,7,.18),0 0 30px rgba(255,193,7,.5)}100%{transform:none}}
+@keyframes msReplyFlash{0%{transform:scale(1)}35%{transform:translateX(-5px) scale(1.035);box-shadow:0 0 0 7px rgba(74,105,255,.2),0 0 28px rgba(74,105,255,.5)}100%{transform:none}}
+@keyframes msVoiceRecord{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(239,68,68,.25)}50%{transform:scale(1.1);box-shadow:0 0 0 9px rgba(239,68,68,.12),0 0 28px rgba(239,68,68,.5)}}
+@keyframes msVoiceSend{0%{transform:scale(.75) translateY(12px);opacity:.2}65%{transform:scale(1.08) translateY(-3px);opacity:1}100%{transform:none}}
+@keyframes msSystemMessage{0%{opacity:0;transform:translateY(12px) scale(.92)}55%{opacity:1;transform:translateY(-2px) scale(1.02)}100%{opacity:1;transform:none}}
+@keyframes msAvatarPick{0%{transform:scale(.75);opacity:.3}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+.msDeleteExplode{animation:msDeleteExplode .62s cubic-bezier(.55,.05,.9,.35) forwards!important;pointer-events:none!important}
+.msDeleteTrash{animation:msDeleteTrash .7s cubic-bezier(.55,.05,.9,.35) forwards!important;pointer-events:none!important}
+.msEditingFlash{animation:msEditFlash .8s ease!important}
+.msForwardFlash{animation:msForwardFlash .75s cubic-bezier(.16,1,.3,1)!important}
+.msSaveFlash{animation:msSaveFlash .75s cubic-bezier(.16,1,.3,1)!important}
+.msReplyFlash{animation:msReplyFlash .75s cubic-bezier(.16,1,.3,1)!important}
+#recordButton.msRecordingV10{animation:msVoiceRecord 1s ease-in-out infinite!important}
+#sendArea.msVoiceSending #sendButton{animation:msVoiceSend .55s cubic-bezier(.16,1,.3,1)!important}
+.message.msSystemMessage{animation:msSystemMessage .55s cubic-bezier(.16,1,.3,1) both!important;align-self:center!important;max-width:80%!important;background:rgba(91,98,255,.10)!important;border:1px dashed rgba(91,98,255,.38)!important;color:#4c58a8!important;text-align:center!important;box-shadow:none!important}
+.message.msDeletedHidden{display:none!important}
+.reportDeletedBadge{position:absolute;top:6px;right:7px;padding:3px 7px;border-radius:999px;background:#ff5a67;color:#fff;font-size:10px;font-weight:bold;box-shadow:0 3px 10px rgba(255,90,103,.28)}
+.report-history-item{position:relative}
+.report-history-media{max-width:min(330px,100%);border-radius:11px;display:block;margin-top:6px}
+.report-history-audio{width:min(330px,100%);margin-top:6px}
+.report-history-deleted{min-height:42px;display:flex;align-items:center;justify-content:center;opacity:.72;font-style:italic;padding-top:15px}
+#avatarFile{display:none!important}
+#avatarPickerButton{width:100%;margin:4px 0;padding:11px 12px!important;border-radius:11px!important;background:linear-gradient(135deg,#edf1ff,#e8eaff)!important;border:1px solid #d6dcff!important;font-weight:700;cursor:pointer}
+#avatarPickerButton:active{transform:scale(.97)}
+#message{color:#111!important;caret-color:#4e62dd!important}
+#sendButton,#recordButton,#actionButton,#stickerButton{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media(max-width:760px){
+  html,body{height:100%;min-height:100%;overflow:hidden}
+  body{background-size:100% auto!important;background-repeat:no-repeat!important;background-position:center top!important;background-attachment:fixed!important}
+  #chat{width:100%!important;height:100dvh!important;min-height:100dvh!important;margin:0!important;border-radius:0!important}
+  #chatArea{width:100%!important;min-width:0!important}
+  #sidebar{width:100%!important;min-width:0!important;display:none}
+  #chatArea{height:100%;}
+  #messages{min-height:0!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:10px!important}
+  #sendArea{position:relative!important;display:flex!important;align-items:flex-end!important;padding:7px!important;padding-bottom:calc(7px + env(safe-area-inset-bottom))!important;gap:5px!important;background:rgba(255,255,255,.96)!important;z-index:20!important}
+  #message{flex:1 1 auto!important;width:auto!important;min-width:0!important;min-height:44px!important;max-height:120px!important;padding:11px 10px!important;font-size:16px!important;line-height:1.45!important;opacity:1!important;visibility:visible!important}
+  #sendButton,#recordButton,#actionButton,#stickerButton{flex:none!important;padding:10px!important;min-width:42px!important;min-height:42px!important}
+  #voiceTimer{display:none!important}
+  #sendButton{font-size:0!important;width:44px!important}
+  #sendButton::before{content:'➤';font-size:20px}
+  #chatHeader{flex:none!important}
+  /* Horizontal theme images: keep the full artwork visible on phones instead of aggressively cropping it. */
+  .themeChoice img{object-fit:cover!important}
+}
+</style>
+<script id="msV10FeaturesJS">
+(()=>{
+  const q=id=>document.getElementById(id);
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  function playDelete(el){if(!el)return;const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';el.classList.remove('msDeleteExplode','msDeleteTrash');void el.offsetWidth;el.classList.add(cls);return sleep(cls==='msDeleteExplode'?620:700)}
+  function flash(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),850)}
+
+  /* 1 — deleted messages disappear completely in normal chats. */
+  const oldRemove=window.removeMessage;
+  window.removeMessage=async function(id){
+    const el=window.messageMap?.get(String(id));
+    if(el){await playDelete(el);el.remove();window.messageMap?.delete(String(id));window.messageDataMap?.delete(String(id));}
+    else oldRemove?.(id);
+  };
+  /* Rendered deleted messages (including history reloads) stay invisible in normal chat. */
+  const oldRenderer=window.renderMessageElement;
+  if(oldRenderer){
+    window.renderMessageElement=function(el,m,mine){
+      oldRenderer(el,m,mine);
+      if(m?.deleted){el.classList.add('msDeletedHidden');el.innerHTML='';}
+      if(m?.message_type==='system'){el.classList.add('msSystemMessage');}
+    };
+  }
+
+  /* 2 — message delete: random explosion / trash animation. */
+  window.deleteMessage=async function(id){
+    if(!confirm('پیام حذف شود؟'))return;
+    const el=window.messageMap?.get(String(id));
+    if(el)await playDelete(el);
+    const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',id);
+    try{
+      const d=await (await fetch('/delete-message',{method:'POST',body:fd,cache:'no-store'})).json();
+      if(!d.success){el?.classList.remove('msDeleteExplode','msDeleteTrash');alert(d.message||'حذف پیام ناموفق بود');return}
+      el?.remove();window.messageMap?.delete(String(id));window.messageDataMap?.delete(String(id));
+    }catch(e){el?.classList.remove('msDeleteExplode','msDeleteTrash');alert('ارتباط با سرور برای حذف پیام برقرار نشد.')}
+  };
+
+  /* 2 — delete conversation animation (after confirmation). */
+  window.deleteConversation=async function(){
+    if(selectedType!=='user'||!selectedUser)return;
+    const target=selectedUser,name=selectedName();
+    if(!confirm(`گفتگوی «${name}» از چت‌های اخیر شما حذف شود؟\n\nپیام‌ها حذف نمی‌شوند و اگر دوباره پیام بفرستی/بگیری، گفتگو دوباره ظاهر می‌شود.`))return;
+    const item=window.userButtonMap?.get?.(target)||[...document.querySelectorAll('#users .userItem')].find(x=>x.dataset.username===target);
+    if(item)await playDelete(item);
+    const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('other_username',target);
+    try{
+      const r=await fetch('/api/delete-conversation',{method:'POST',body:fd,cache:'no-store'});const d=await r.json();
+      if(!r.ok||!d.success)throw new Error(d.message||'حذف گفتگو ناموفق بود.');
+      usersCache=d.users||[];userMap=new Map(usersCache.map(u=>[u.username,u]));renderUsers();
+      selectedType='';selectedUser='';selectedGroupId=null;selectedGroup=null;
+      q('messages').innerHTML='';cancelReply();stopTyping();q('typingIndicator')?.classList.remove('show');enableComposer(false);
+      q('deleteConversationButton').style.display='none';q('membersButton').style.display='none';q('deleteGroupButton').style.display='none';setHeader('','','');
+    }catch(e){item?.classList.remove('msDeleteExplode','msDeleteTrash');console.error(e);alert(e.message||'حذف گفتگو ناموفق بود.')}
+  };
+  /* 2 — delete group animation (after confirmation). */
+  window.deleteGroup=async function(){
+    if(selectedType!=='group'||!selectedGroup)return;
+    if(selectedGroup.owner!==currentUsername)return alert('فقط سازنده گروه می‌تواند گروه را حذف کند.');
+    const gid=String(selectedGroup.id);
+    if(!confirm(`گروه «${selectedGroup.name}» حذف شود؟`))return;
+    const item=window.groupButtonMap?.get?.(gid)||[...document.querySelectorAll('#groups .groupItem')].find(x=>x.dataset.groupId===gid);
+    if(item)await playDelete(item);
+    const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('group_id',selectedGroup.id);
+    try{const d=await (await fetch('/delete-group',{method:'POST',body:fd,cache:'no-store'})).json();if(!d.success)throw new Error(d.message||'حذف گروه ناموفق بود.');}
+    catch(e){item?.classList.remove('msDeleteExplode','msDeleteTrash');alert(e.message||'حذف گروه ناموفق بود.')}
+  };
+
+  /* 3 — voice recording / sending animation. */
+  const oldToggleRecording=window.toggleRecording;
+  window.toggleRecording=async function(){
+    const was=!!isRecording;
+    if(!was){q('recordButton')?.classList.add('msRecordingV10');}
+    try{const r=await oldToggleRecording?.apply(this,arguments);if(was||!isRecording){if(!isRecording)q('recordButton')?.classList.remove('msRecordingV10');q('sendArea')?.classList.add('msVoiceSending');setTimeout(()=>q('sendArea')?.classList.remove('msVoiceSending'),700)}return r}
+    catch(e){q('recordButton')?.classList.remove('msRecordingV10');throw e}
+  };
+
+  /* 4 — edit animation. */
+  const oldEdit=window.editMessage;
+  window.editMessage=async function(id,old){const el=window.messageMap?.get(String(id));if(el)flash(el,'msEditingFlash');const r=await oldEdit?.apply(this,arguments);const fresh=window.messageMap?.get(String(id));if(fresh)flash(fresh,'msEditingFlash');return r};
+  /* 5 — forward animation. */
+  const oldForward=window.openForwardPopup;
+  if(oldForward)window.openForwardPopup=async function(m){if(m){flash(window.messageMap?.get(String(m.id)),'msForwardFlash')}const r=await oldForward.apply(this,arguments);const p=q('forwardMessagePopup');if(p)flash(p.querySelector('.popupCard'),'msForwardFlash');return r};
+  /* 6 — save animation. */
+  const oldSave=window.toggleSavedMessage;
+  if(oldSave)window.toggleSavedMessage=async function(m){if(m)flash(window.messageMap?.get(String(m.id)),'msSaveFlash');return oldSave.apply(this,arguments)};
+  /* 7 — reply animation. */
+  const oldReply=window.startReply;
+  if(oldReply)window.startReply=function(m){if(m)flash(window.messageMap?.get(String(m.id)),'msReplyFlash');return oldReply.apply(this,arguments)};
+
+  /* 8 — image sending bug fix: imageButton did not exist in the V9 DOM. */
+  window.sendSelectedImage=async function(){
+    const f=q('imageInput')?.files?.[0];
+    if(!f||!selectedType||window.imageSendingV10)return;
+    window.imageSendingV10=true;stopTyping();
+    const fd=new FormData();fd.append('sender',currentUsername);fd.append('receiver',targetKey());fd.append('token',authToken);fd.append('image',f);fd.append('reply_to',replyTo?.id||'');
+    try{
+      const r=await fetch('/upload-image',{method:'POST',body:fd,cache:'no-store'});const d=await r.json();
+      if(!r.ok||!d.success){alert(d.message||'ارسال عکس ناموفق بود');return}
+      if(d.message){const visible=(selectedType==='group'&&String(d.message.group_id)===String(selectedGroupId))||(selectedType==='user'&&d.message.receiver===selectedUser);if(visible)addMessageObj(d.message,true,true)}
+      cancelReply();
+    }catch(e){console.error(e);alert('ارسال عکس ناموفق بود')}
+    finally{q('imageInput').value='';window.imageSendingV10=false}
+  };
+
+  /* 9 — profile: one clear button, choosing a file immediately uploads it. */
+  function fixAvatarPicker(){
+    const input=q('avatarFile');if(!input)return;
+    input.style.display='none';input.setAttribute('aria-hidden','true');
+    const row=input.parentElement?.querySelector('.row');
+    if(row){
+      row.innerHTML='';
+      const choose=document.createElement('button');choose.id='avatarPickerButton';choose.type='button';choose.textContent='📷 انتخاب عکس پروفایل';choose.onclick=()=>input.click();
+      const del=document.createElement('button');del.className='danger';del.type='button';del.textContent='🗑️ حذف عکس';del.onclick=()=>deleteAvatar();
+      row.append(choose,del);
+    }
+    input.onchange=()=>{if(input.files?.[0]){flash(q('avatarPreview'),'msAvatarPick');uploadAvatar()}};
+  }
+  fixAvatarPicker();
+
+  /* 11 — report history now shows real images/voices and marks deleted messages. */
+  const oldReportHistory=window.openReportHistory;
+  window.openReportHistory=async function(id){
+    if(typeof oldReportHistory!=='function')return;
+    await oldReportHistory.apply(this,arguments);
+    const box=q('reportHistoryList');if(!box)return;
+    const items=box.querySelectorAll('.report-history-item');
+    /* Re-fetch the history so we have the exact message objects and can render media. */
+    try{
+      const d=await (await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(id)}`,{cache:'no-store'})).json();
+      if(!d.success)return;
+      box.innerHTML='';
+      for(const m of (d.messages||[])){
+        const c=document.createElement('div');c.className='report-history-item '+(m.sender===currentUsername?'mine':'theirs');
+        const s=document.createElement('div');s.className='report-history-sender';s.textContent=userMap.get(m.sender)?.display_name||m.sender||'کاربر';c.appendChild(s);
+        if(m.deleted){
+          const body=document.createElement('div');body.className='report-history-deleted';body.textContent='این پیام حذف شده است';
+          const badge=document.createElement('span');badge.className='reportDeletedBadge';badge.textContent='حذف شده';c.append(body,badge);
+        }else if(m.message_type==='image'){
+          const img=document.createElement('img');img.className='report-history-media';img.alt='عکس گزارش‌شده';img.loading='lazy';img.src=messageFileUrl(m.id,false);img.onclick=()=>openImageViewer(m.id,img.src);c.appendChild(img);
+        }else if(m.message_type==='audio'){
+          const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a);
+        }else{
+          const body=document.createElement('div');body.className='report-history-text';body.textContent=m.message_type==='sticker'?(m.message||'🙂'):(m.message||'');c.appendChild(body);
+        }
+        const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c);
+      }
+      box.scrollTop=box.scrollHeight;
+    }catch(e){console.error('report history media render',e)}
+  };
+
+  /* 12/13 — phone layout + keyboard stability. */
+  function keepKeyboard(){const input=q('message');if(!input)return;try{input.focus({preventScroll:true})}catch{input.focus()}}
+  const send=q('sendButton');
+  if(send){
+    const keep=e=>{if(window.innerWidth<=760){e.preventDefault();setTimeout(keepKeyboard,0)}};
+    send.addEventListener('pointerdown',keep,{passive:false});
+  }
+  document.addEventListener('click',e=>{if(window.innerWidth<=760&&e.target.closest('#sendButton'))setTimeout(keepKeyboard,30)});
+  window.addEventListener('resize',()=>{if(window.innerWidth<=760&&document.activeElement===q('message'))setTimeout(()=>{q('messages')?.scrollTo({top:q('messages').scrollHeight,behavior:'auto'})},50)});
+
+  /* Keep the composer focused after any send while a chat is open. */
+  const oldSend=window.sendMessage;
+  if(oldSend)window.sendMessage=async function(){try{return await oldSend.apply(this,arguments)}finally{if(window.innerWidth<=760&&selectedType)setTimeout(keepKeyboard,20)}};
+})();
+</script>
+
 </body>
 </html>

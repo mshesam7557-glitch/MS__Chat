@@ -3367,9 +3367,15 @@ async def api_admin_report_history(username: str, token: str, message_id: int):
     if row['group_id']:
         msgs=await asyncio.to_thread(get_group_history,row['group_id'],username)
         return {'success':True,'kind':'group','group_id':row['group_id'],'messages':msgs}
-    other=row['sender'] if row['sender']!=username else row['receiver']
-    msgs=await asyncio.to_thread(get_direct_history,row['sender'],other)
-    return {'success':True,'kind':'user','user':other,'messages':msgs}
+    # The admin is usually not a participant in the reported direct chat.
+    # Use the actual sender/receiver pair from the reported message; using the
+    # admin username here made newly reported PVs incorrectly return no messages.
+    sender=row['sender']
+    receiver=row['receiver']
+    if not sender or not receiver:
+        return {'success':False,'messages':[],'message':'اطلاعات گفتگوی پیام گزارش‌شده ناقص است.'}
+    msgs=await asyncio.to_thread(get_direct_history,sender,receiver)
+    return {'success':True,'kind':'user','user':receiver if sender==username else sender,'messages':msgs}
 
 @app.post('/api/admin/report-status')
 async def api_admin_report_status(username: str=Form(...), token: str=Form(...), report_id: int=Form(...), status: str=Form(...)):

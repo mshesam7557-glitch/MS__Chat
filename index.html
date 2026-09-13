@@ -333,7 +333,7 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 </div></div>
 
 
-<div id="profilePublicPopup" class="popup"><div class="popupCard" style="text-align:center"><h3>👤 پروفایل</h3><img id="publicAvatar" class="publicAvatar" alt=""><b id="publicDisplayName"></b><div class="muted" id="publicUsername" style="margin:4px 0 10px"></div><div class="sectionTitle" style="text-align:right">بیوگرافی</div><div id="publicBio" class="bioBox" style="text-align:right">بیوگرافی ندارد.</div><button onclick="closePopup('profilePublicPopup')">بستن</button></div></div>
+<div id="profilePublicPopup" class="popup"><div class="popupCard" style="text-align:center"><h3>👤 پروفایل</h3><img id="publicAvatar" class="publicAvatar" alt=""><b id="publicDisplayName"></b><div class="muted" id="publicUsername" style="margin:4px 0 10px"></div><div class="sectionTitle" style="text-align:right">بیوگرافی</div><div id="publicBio" class="bioBox" style="text-align:right">بیوگرافی ندارد.</div><button id="publicMessageButton" class="primary" onclick="messageFromPublicProfile()">💬 پیام دادن</button><button onclick="closePopup('profilePublicPopup')">بستن</button></div></div>
 <div id="reportsPopup" class="popup"><div class="popupCard"><h3>🚩 گزارش‌ها</h3><div id="reportList"><div class="muted">در حال دریافت...</div></div><button onclick="closePopup('reportsPopup')">بستن</button></div></div>
 <div id="reportHistoryPopup" class="popup"><div class="popupCard"><h3>🔎 بررسی گفتگو</h3><div id="reportHistoryList"></div><button onclick="closePopup('reportHistoryPopup')">بستن</button></div></div>
 <div id="msLoader"><div class="loaderCard"><div class="bigSpinner"></div><span>لطفاً صبر کنید...</span></div></div>
@@ -1299,7 +1299,7 @@ window.hideForMe=hideForMe;
 window.openPublicProfile=async function(username){try{const d=await(await fetch(`/api/public-profile?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&target=${encodeURIComponent(username)}`,{cache:'no-store'})).json();if(!d.success){alert(d.message||'پروفایل پیدا نشد');return}const p=d.profile;$('publicDisplayName').textContent=p.display_name;$('publicUsername').textContent='@'+p.username;$('publicBio').textContent=p.bio||'بیوگرافی ندارد.';setAvatar($('publicAvatar'),p.avatar,p.display_name,userAvatarUrl(p.username));openPopup('profilePublicPopup')}catch(e){alert('دریافت پروفایل ناموفق بود')}}
 // report admin
 window.openReportsPopup=async function(){openPopup('reportsPopup');const box=$('reportList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت...</div>';try{const d=await(await fetch(`/api/admin/reports?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store'})).json();if(!d.success){box.textContent=d.message||'دسترسی غیرمجاز';return}box.innerHTML='';if(!d.reports.length){box.innerHTML='<div class="muted">گزارشی وجود ندارد.</div>';return}d.reports.forEach(r=>{const c=document.createElement('div');c.className='reportCard';c.innerHTML=`<b>🚩 گزارش #${r.id}</b><p>پیام از: <b>${escapeHtml(r.sender_name||r.sender)}</b></p><p>دلیل: ${escapeHtml(r.reason)}</p><p class="muted">${escapeHtml(formatDate(r.created_at))}</p>`;const a=document.createElement('div');a.className='reportActions';const v=document.createElement('button');v.textContent='🔎 بررسی گفتگو';v.onclick=()=>openReportHistory(r.message_id);a.appendChild(v);const done=document.createElement('button');done.textContent='✅ بررسی شد';done.onclick=async()=>{const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('report_id',r.id);fd.append('status','reviewed');try{const resp=await fetch('/api/admin/report-status',{method:'POST',body:fd});const result=await resp.json();if(!result.success){alert(result.message||'بررسی گزارش ناموفق بود.');return}c.remove();if(!box.querySelector('.reportCard'))box.innerHTML='<div class="muted">گزارشی وجود ندارد.</div>'}catch(e){alert('ارتباط با سرور برای بررسی گزارش برقرار نشد.')}};a.appendChild(done);c.appendChild(a);box.appendChild(c)})}catch(e){box.innerHTML='<div class="muted">دریافت گزارش‌ها ناموفق بود.</div>'}}
-async function openReportHistory(id){closePopup('reportsPopup');openPopup('reportHistoryPopup');const box=$('reportHistoryList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';try{const d=await(await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${id}`,{cache:'no-store'})).json();if(!d.success){box.textContent=d.message||'دریافت گفتگو ناموفق بود.';return}box.innerHTML='';const list=d.messages||[];if(!list.length){box.innerHTML='<div class="muted">پیامی برای این گزارش پیدا نشد.</div>';return}list.forEach(m=>{const c=document.createElement('div');const mine=m.sender===currentUsername;c.className='report-history-item '+(mine?'mine':'theirs');const s=document.createElement('div');s.className='report-history-sender';s.textContent=userMap.get(m.sender)?.display_name||m.sender||'کاربر';const body=document.createElement('div');body.className='report-history-text';body.textContent=uiPreview(m);const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.append(s,body,meta);box.appendChild(c)});box.scrollTop=box.scrollHeight}catch(e){console.error(e);box.textContent='دریافت گفتگو ناموفق بود.'}}
+async function openReportHistory(id){closePopup('reportsPopup');openPopup('reportHistoryPopup');const box=$('reportHistoryList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';try{const d=await(await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${id}`,{cache:'no-store'})).json();if(!d.success){box.textContent=d.message||'دریافت گفتگو ناموفق بود.';return}box.innerHTML='';const list=d.messages||[];if(window.renderReportHistoryV11){window.renderReportHistoryV11(list)}else if(!list.length){box.innerHTML='<div class="muted">پیامی برای این گزارش پیدا نشد.</div>'}}catch(e){console.error(e);box.textContent='دریافت گفتگو ناموفق بود.'}}
 // richer message renderer
 const originalRenderer=window.renderMessageElement;
 window.renderMessageElement=function(el,m,mine){
@@ -1675,6 +1675,104 @@ ensureSavedButton();ensureSavedChatPanel();
   /* Keep the composer focused after any send while a chat is open. */
   const oldSend=window.sendMessage;
   if(oldSend)window.sendMessage=async function(){try{return await oldSend.apply(this,arguments)}finally{if(window.innerWidth<=760&&selectedType)setTimeout(keepKeyboard,20)}};
+})();
+</script>
+
+
+<style id="msV11Enhancements">
+/* V11 group avatars + action animations + report history */
+.groupMessageHead{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.groupMessageAvatar{width:30px;height:30px;border-radius:50%;object-fit:cover;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.16);transition:transform .18s ease,box-shadow .18s ease}
+.groupMessageAvatar:hover{transform:scale(1.12);box-shadow:0 0 0 3px rgba(92,98,255,.22),0 5px 14px rgba(0,0,0,.2)}
+.groupMessageSender{font-weight:700;cursor:pointer}
+.groupMessageSender:hover{text-decoration:underline}
+@keyframes v11Reply{0%{transform:scale(1)}35%{transform:translateX(-7px) scale(1.04);box-shadow:0 0 0 6px rgba(74,105,255,.22),0 0 28px rgba(74,105,255,.65)}100%{transform:none}}
+@keyframes v11Edit{0%{filter:none}35%{filter:brightness(1.35);box-shadow:0 0 0 7px rgba(54,111,255,.24),0 0 32px rgba(54,111,255,.7)}100%{filter:none;box-shadow:none}}
+@keyframes v11Save{0%{transform:scale(1)}35%{transform:scale(1.06) rotate(-1deg);box-shadow:0 0 0 7px rgba(255,193,7,.24),0 0 30px rgba(255,193,7,.75)}100%{transform:none}}
+@keyframes v11Forward{0%{transform:translateX(0)}35%{transform:translateX(8px) scale(1.035);box-shadow:0 0 0 7px rgba(124,77,255,.24),0 0 30px rgba(124,77,255,.7)}100%{transform:none}}
+@keyframes v11Trash{0%{transform:translate(0,0) rotate(0);opacity:1}35%{transform:translate(10px,-12px) rotate(-8deg) scale(1.04)}100%{transform:translate(85px,105px) rotate(28deg) scale(.08);opacity:0;filter:blur(5px)}}
+@keyframes v11Explode{0%{transform:scale(1);opacity:1}28%{transform:scale(1.13);filter:brightness(2.2)}60%{transform:scale(.72);opacity:.55;filter:blur(2px)}100%{transform:scale(.03);opacity:0;filter:blur(9px)}}
+.v11-action-reply{animation:v11Reply .72s cubic-bezier(.2,.8,.2,1)}
+.v11-action-edit{animation:v11Edit .8s ease}
+.v11-action-save{animation:v11Save .72s cubic-bezier(.2,.8,.2,1)}
+.v11-action-forward{animation:v11Forward .72s cubic-bezier(.2,.8,.2,1)}
+.v11-delete-trash{animation:v11Trash .72s cubic-bezier(.55,.05,.9,.35) forwards!important;pointer-events:none!important}
+.v11-delete-explode{animation:v11Explode .62s cubic-bezier(.55,.05,.9,.35) forwards!important;pointer-events:none!important}
+.report-history-media{max-width:min(420px,100%);border-radius:12px;display:block;margin-top:4px}
+.report-deleted{position:relative;min-height:34px;min-width:90px;opacity:.72;border:1px dashed #d45b5b!important}
+.report-deleted-badge{position:absolute;top:4px;right:5px;font-size:9px;color:#a51616;background:#ffe0e0;border-radius:999px;padding:2px 6px;font-weight:700}
+.report-deleted-space{height:18px}
+</style>
+<script id="msV11EnhancementsJS">
+(()=>{
+ const $=id=>document.getElementById(id);
+ function animate(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),900)}
+ function currentUser(u){return userMap?.get?.(u)||usersCache?.find?.(x=>x.username===u)||null}
+ function avatarSrc(u){const x=currentUser(u);return x?.avatar||userAvatarUrl(u)||''}
+ // Group message sender avatar/profile.
+ const baseRenderer=window.renderMessageElement;
+ window.renderMessageElement=function(el,m,mine){
+   baseRenderer(el,m,mine);
+   if(!m.group_id)return;
+   const head=el.querySelector('.messageHeader');
+   if(!head)return;
+   const sender=m.sender;
+   const u=currentUser(sender);
+   const wrap=document.createElement('div');wrap.className='groupMessageHead';
+   const av=document.createElement('img');av.className='groupMessageAvatar';av.alt='';
+   setAvatar(av,u?.avatar,u?.display_name||sender,userAvatarUrl(sender));
+   av.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
+   const name=document.createElement('span');name.className='groupMessageSender';name.textContent=mine?'من':(u?.display_name||sender);
+   name.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
+   wrap.append(av,name);head.replaceWith(wrap);
+ };
+ // Public profile with a direct-message action.
+ window.messageFromPublicProfile=async function(){
+   const username=$('publicUsername')?.textContent?.replace(/^@/,'').trim();
+   if(!username||username===currentUsername){closePopup('profilePublicPopup');return;}
+   let u=currentUser(username);
+   if(!u){try{const d=await (await fetch(`/api/search-users?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&q=${encodeURIComponent(username)}`)).json();u=(d.users||[]).find(x=>x.username===username);if(u){usersCache=usersCache.filter(x=>x.username!==u.username);usersCache.unshift(u);userMap.set(u.username,u);renderUsers()}}catch{}}
+   if(!u){alert('کاربر پیدا نشد');return}
+   closePopup('profilePublicPopup');selectUser(u);
+ };
+ // Patch public profile renderer to enable the button for everyone except self.
+ const oldPublic=window.openPublicProfile;
+ window.openPublicProfile=async function(username){await oldPublic(username);const btn=$('publicMessageButton');if(btn)btn.style.display=(username&&username!==currentUsername)?'inline-block':'none';};
+ // Strong visible action animations. Delegation works for dynamically-created message buttons.
+ document.addEventListener('click',e=>{
+   const b=e.target.closest('.actions button');
+   if(!b)return;
+   const msg=b.closest('.message');if(!msg)return;
+   const t=(b.textContent||'');
+   if(t.includes('Reply'))animate(msg,'v11-action-reply');
+   else if(t.includes('ویرایش'))animate(msg,'v11-action-edit');
+   else if(t.includes('ذخیره'))animate(msg,'v11-action-save');
+   else if(t.includes('هدایت'))animate(msg,'v11-action-forward');
+   else if(t.includes('حذف')){
+     if(Math.random()<.5)animate(msg,'v11-delete-explode');else animate(msg,'v11-delete-trash');
+   }
+ },true);
+ // Delete conversation/group: animate sidebar/header item before the existing operation.
+ document.addEventListener('click',e=>{
+   const b=e.target.closest('#deleteConversationButton,#deleteGroupButton');if(!b)return;
+   const target=selectedType==='group'?groupButtonMap?.get?.(String(selectedGroupId)):userButtonMap?.get?.(selectedUser);
+   if(target){animate(target,Math.random()<.5?'v11-delete-explode':'v11-delete-trash')}
+ },true);
+ // Replace report-history renderer so images/audio work and deleted messages only show a corner badge.
+ window.renderReportHistoryV11=function(list){
+   const box=$('reportHistoryList');box.innerHTML='';
+   if(!list.length){box.innerHTML='<div class="muted">پیامی برای این گزارش پیدا نشد.</div>';return}
+   for(const m of list){
+     const c=document.createElement('div');const mine=m.sender===currentUsername;c.className='report-history-item '+(mine?'mine':'theirs');
+     const s=document.createElement('div');s.className='report-history-sender';s.textContent=currentUser(m.sender)?.display_name||m.sender||'کاربر';c.appendChild(s);
+     if(m.deleted){c.classList.add('report-deleted');const badge=document.createElement('span');badge.className='report-deleted-badge';badge.textContent='حذف شده';c.appendChild(badge);const sp=document.createElement('div');sp.className='report-deleted-space';c.appendChild(sp)}
+     else if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.src=messageFileUrl(m.id,false);img.alt='تصویر گزارش‌شده';img.loading='lazy';c.appendChild(img)}
+     else if(m.message_type==='audio'&&m.audio){const a=document.createElement('audio');a.className='report-history-media';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a)}
+     else {const body=document.createElement('div');body.className='report-history-text';body.textContent=uiPreview(m);c.appendChild(body)}
+     const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c)
+   }
+   box.scrollTop=box.scrollHeight;
+ };
 })();
 </script>
 

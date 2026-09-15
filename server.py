@@ -1493,10 +1493,11 @@ async def message_file(message_id: int, username: str, token: str, download: int
             )
             row = cursor.fetchone()
 
-    if not row or row["deleted"]:
+    if not row:
         return Response(status_code=404, content="File not found")
 
     # The owner/admin can inspect reported media in the moderation history.
+
     # Normal users still follow the original sender/receiver/group access rules.
     allowed = username == OWNER_USERNAME
     if not allowed:
@@ -2153,33 +2154,24 @@ async def delete_message(
     with get_db() as connection:
         with connection.cursor() as cursor:
             cursor.execute(
-                "SELECT sender,audio,media,group_id FROM messages WHERE id=%s",
+                "SELECT sender,receiver,audio,media,group_id FROM messages WHERE id=%s",
                 (message_id,),
             )
             row = cursor.fetchone()
             if not row or row["sender"] != username:
                 return {"success": False, "message": "این پیام متعلق به شما نیست."}
             cursor.execute(
-                "UPDATE messages SET deleted=TRUE,message='',audio=NULL,media=NULL WHERE id=%s",
+                "UPDATE messages SET deleted=TRUE WHERE id=%s",
                 (message_id,),
             )
         connection.commit()
-    for p in (row["audio"], row["media"]):
-        if p and p.startswith("storage:"):
-            try:
-                def _media_still_referenced(path_value, deleted_id):
-                    with get_db() as connection:
-                        with connection.cursor() as cursor:
-                            cursor.execute(
-                                "SELECT 1 FROM messages WHERE id<>%s AND (audio=%s OR media=%s) LIMIT 1",
-                                (deleted_id, path_value, path_value),
-                            )
-                            return cursor.fetchone() is not None
-                if not await asyncio.to_thread(_media_still_referenced, p, message_id):
-                    await asyncio.to_thread(delete_storage, p)
-            except Exception:
-                pass
-    msg = get_message(message_id)
+    # Keep the original media/text in the database and storage so the admin
+    # moderation history can still inspect what was reported.
+    msg = {
+        "id": message_id, "sender": row["sender"], "receiver": row.get("receiver"),
+        "group_id": row["group_id"], "message": "", "audio": row.get("audio"),
+        "media": row.get("media"), "deleted": True
+    }
     await notify_message_delete(msg)
     return {"success": True, "id": message_id}
 
@@ -3359,44 +3351,45 @@ async def api_admin_reports(username: str, token: str):
 
 @app.get('/api/admin/report-history')
 async def api_admin_report_history(username: str, token: str, message_id: int):
-    """Return the conversation containing a reported message for the owner.
-
-    Uses only the core message columns so report review remains compatible with
-    databases where optional feature columns were not migrated yet.
-    """
-    if not _admin_ok(username, token):
+    if not _admin_ok(username,token):
         return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
-    try:
-        with get_db() as c:
-            with c.cursor() as cur:
-                base_sql = """
-                    SELECT id, sender, receiver, message, audio, media, status,
-                           message_type, reply_to, edited, deleted, group_id, created_at
+    with get_db() as c:
+        with c.cursor() as cur:
+            cur.execute('SELECT sender,receiver,group_id FROM messages WHERE id=%s',(message_id,))
+            row=cur.fetchone()
+            if not row:
+                return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
+            if row['group_id']:
+                cur.execute('''
+                    SELECT id,sender,receiver,message,audio,media,status,message_type,reply_to,edited,deleted,group_id,created_at,
+                           forwarded_from_username,forwarded_from_name,forwarded_from_message_id
+                    FROM messages WHERE group_id=%s ORDER BY id ASC LIMIT %s
+                ''',(row['group_id'],MAX_HISTORY_MESSAGES))
+                kind='group'; group_id=row['group_id']; other=None
+            else:
+                cur.execute('''
+                    SELECT id,sender,receiver,message,audio,media,status,message_type,reply_to,edited,deleted,group_id,created_at,
+                           forwarded_from_username,forwarded_from_name,forwarded_from_message_id
                     FROM messages
-                """
-                cur.execute(base_sql + " WHERE id=%s", (message_id,))
-                reported = cur.fetchone()
-                if not reported:
-                    return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
-                if reported['group_id'] is not None:
-                    cur.execute(base_sql + " WHERE group_id=%s ORDER BY id ASC LIMIT %s",
-                                (reported['group_id'], MAX_HISTORY_MESSAGES))
-                    rows = cur.fetchall()
-                    kind='group'; group_id=reported['group_id']; user=None
-                else:
-                    sender, receiver = reported['sender'], reported['receiver']
-                    if not sender or not receiver:
-                        return {'success':False,'messages':[],'message':'اطلاعات گفتگوی پیام گزارش‌شده ناقص است.'}
-                    cur.execute(base_sql + " WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id ASC LIMIT %s",
-                                (sender, receiver, receiver, sender, MAX_HISTORY_MESSAGES))
-                    rows = cur.fetchall()
-                    kind='user'; group_id=None; user=receiver if sender==username else sender
-        messages = rows_to_messages(rows)
-        return {'success':True,'kind':kind,'group_id':group_id,'user':user,'messages':messages}
-    except Exception as error:
-        print('Admin report history error:', repr(error))
-        return {'success':False,'messages':[],'message':f'دریافت گفتگو ناموفق بود: {type(error).__name__}'}
-
+                    WHERE group_id IS NULL
+                      AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s))
+                    ORDER BY id ASC LIMIT %s
+                ''',(row['sender'],row['receiver'],row['receiver'],row['sender'],MAX_HISTORY_MESSAGES))
+                kind='user'; group_id=None; other=row['receiver'] if row['sender']==username else row['sender']
+            rows=cur.fetchall()
+    messages=[]
+    for r in rows:
+        messages.append({
+            'id':r['id'],'sender':r['sender'],'receiver':r['receiver'],
+            'message':r['message'] or '', 'audio':r['audio'] or None, 'media':r['media'] or None,
+            'status':r['status'] or 'sent','message_type':r['message_type'] or 'text',
+            'reply_to':r['reply_to'],'edited':bool(r['edited']),'deleted':bool(r['deleted']),
+            'group_id':r['group_id'],'created_at':now_iso(r['created_at']),
+            'forwarded_from_username':r.get('forwarded_from_username'),
+            'forwarded_from_name':r.get('forwarded_from_name') or r.get('forwarded_from_username'),
+            'forwarded_from_message_id':r.get('forwarded_from_message_id'),
+        })
+    return {'success':True,'kind':kind,'group_id':group_id,'user':other,'messages':messages}
 
 @app.post('/api/admin/report-status')
 async def api_admin_report_status(username: str=Form(...), token: str=Form(...), report_id: int=Form(...), status: str=Form(...)):

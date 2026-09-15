@@ -168,10 +168,10 @@ body{transition:background-image .7s var(--ms-ease),background-color .5s ease}
 @keyframes msGlow{0%,100%{box-shadow:0 0 0 rgba(95,115,255,0)}50%{box-shadow:0 0 22px rgba(95,115,255,.28)}}
 @keyframes msTyping{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
 @keyframes msShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-@keyframes msSend{0%{opacity:0;filter:blur(2px)}60%{opacity:1;filter:blur(0)}100%{opacity:1;filter:none}}
-.message{animation:msSend .34s ease both;transform-origin:bottom right;transition:transform .30s cubic-bezier(.2,.9,.2,1),box-shadow .30s ease,filter .30s ease!important;will-change:transform}
+@keyframes msSend{0%{transform:scale(.8) translateY(8px);opacity:0}60%{transform:scale(1.06) translateY(-2px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+.message{animation:msSend .34s var(--ms-spring) both;transform-origin:bottom right;transition:transform .30s cubic-bezier(.22,.8,.22,1),box-shadow .30s ease,filter .30s ease!important;will-change:transform}
 .message.theirs{transform-origin:bottom left}
-.message:hover{transform:translateY(-3px) scale(1.008)!important;filter:saturate(1.04);box-shadow:0 10px 25px rgba(0,0,0,.11)!important}
+.message:hover{transform:translateY(-3px) scale(1.008)!important;filter:saturate(1.04);box-shadow:0 10px 25px rgba(0,0,0,.11)!important}.message.msEntranceFinished{animation:none!important}
 .message.mine{animation-name:msSend}
 .message.theirs{animation-name:msSlideInLeft}
 .msgImage,.audioMessage,.musicMessage{transition:transform .28s var(--ms-spring),filter .28s ease,box-shadow .28s ease}
@@ -783,13 +783,7 @@ function renderMessageElement(el,m,mine){
  const readHint=el.querySelector(".groupReadHint");if(readHint)readHint.onclick=(ev)=>{ev.stopPropagation();openGroupReaders(m.id)}
 }
 function replaceMessage(m){const key=String(m.id);messageDataMap.set(key,m);const el=messageMap.get(key);if(el)renderMessageElement(el,m,m.sender===currentUsername)}
-function removeMessage(id){
- const key=String(id), el=messageMap.get(key);
- if(!el){messageDataMap.delete(key);return}
- const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';
- el.classList.remove('msDeleteExplode','msDeleteTrash');void el.offsetWidth;el.classList.add(cls);
- setTimeout(()=>{el.remove();messageMap.delete(key);messageDataMap.delete(key)},cls==='msDeleteExplode'?650:760);
-}
+function removeMessage(id){const key=String(id),old=messageDataMap.get(key);if(!old)return;const updated={...old,deleted:true,message:"",media:null,audio:null};messageDataMap.set(key,updated);const el=messageMap.get(key);if(el)renderMessageElement(el,updated,updated.sender===currentUsername)}
 function findMessageById(id){return messageDataMap.get(String(id))||null}
 function scrollBottom(){const d=qs("messages");d.scrollTop=d.scrollHeight}
 function jumpToMessageWithHighlight(messageId){
@@ -911,19 +905,7 @@ async function deleteConversation(){
  }catch(e){console.error(e);alert(e.message||"حذف گفتگو ناموفق بود.")}
 }
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
-async function deleteMessage(id){
- if(!confirm("پیام حذف شود؟"))return;
- const el=messageMap.get(String(id));
- const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';
- if(el){el.classList.remove('msDeleteExplode','msDeleteTrash');void el.offsetWidth;el.classList.add(cls);}
- await new Promise(r=>setTimeout(r,cls==='msDeleteExplode'?650:760));
- const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);
- try{
-  const d=await (await fetch("/delete-message",{method:"POST",body:fd,cache:"no-store"})).json();
-  if(!d.success){el?.classList.remove('msDeleteExplode','msDeleteTrash');alert(d.message||"حذف پیام ناموفق بود");return}
-  el?.remove();messageMap.delete(String(id));messageDataMap.delete(String(id));
- }catch(e){el?.classList.remove('msDeleteExplode','msDeleteTrash');alert("ارتباط با سرور برای حذف پیام برقرار نشد.")}
-}
+async function deleteMessage(id){if(!confirm("پیام حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);const d=await (await fetch("/delete-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
 
 const STICKERS=["😂","🤣","😍","🥰","😘","😎","🤩","🥳","😴","😱","🤔","🙄","😡","😭","🤯","🥹","❤️","💔","🔥","👏","👍","👎","🙏","🎉","💀","👀","🤝","🚀","🎮","⚡"];
 function buildStickerPanel(){const grid=qs("stickerGrid");if(!grid||grid.children.length)return;for(const sticker of STICKERS){const b=document.createElement("button");b.className="stickerBtn";b.type="button";b.textContent=sticker;b.title="ارسال استیکر";b.onclick=()=>sendSticker(sticker);grid.appendChild(b)}}
@@ -1317,27 +1299,7 @@ window.hideForMe=hideForMe;
 window.openPublicProfile=async function(username){try{const d=await(await fetch(`/api/public-profile?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&target=${encodeURIComponent(username)}`,{cache:'no-store'})).json();if(!d.success){alert(d.message||'پروفایل پیدا نشد');return}const p=d.profile;$('publicDisplayName').textContent=p.display_name;$('publicUsername').textContent='@'+p.username;$('publicBio').textContent=p.bio||'بیوگرافی ندارد.';setAvatar($('publicAvatar'),p.avatar,p.display_name,userAvatarUrl(p.username));openPopup('profilePublicPopup')}catch(e){alert('دریافت پروفایل ناموفق بود')}}
 // report admin
 window.openReportsPopup=async function(){openPopup('reportsPopup');const box=$('reportList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت...</div>';try{const d=await(await fetch(`/api/admin/reports?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store'})).json();if(!d.success){box.textContent=d.message||'دسترسی غیرمجاز';return}box.innerHTML='';if(!d.reports.length){box.innerHTML='<div class="muted">گزارشی وجود ندارد.</div>';return}d.reports.forEach(r=>{const c=document.createElement('div');c.className='reportCard';c.innerHTML=`<b>🚩 گزارش #${r.id}</b><p>پیام از: <b>${escapeHtml(r.sender_name||r.sender)}</b></p><p>دلیل: ${escapeHtml(r.reason)}</p><p class="muted">${escapeHtml(formatDate(r.created_at))}</p>`;const a=document.createElement('div');a.className='reportActions';const v=document.createElement('button');v.textContent='🔎 بررسی گفتگو';v.onclick=()=>openReportHistory(r.message_id);a.appendChild(v);const done=document.createElement('button');done.textContent='✅ بررسی شد';done.onclick=async()=>{const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('report_id',r.id);fd.append('status','reviewed');try{const resp=await fetch('/api/admin/report-status',{method:'POST',body:fd});const result=await resp.json();if(!result.success){alert(result.message||'بررسی گزارش ناموفق بود.');return}c.remove();if(!box.querySelector('.reportCard'))box.innerHTML='<div class="muted">گزارشی وجود ندارد.</div>'}catch(e){alert('ارتباط با سرور برای بررسی گزارش برقرار نشد.')}};a.appendChild(done);c.appendChild(a);box.appendChild(c)})}catch(e){box.innerHTML='<div class="muted">دریافت گزارش‌ها ناموفق بود.</div>'}}
-async function openReportHistory(id){
- closePopup('reportsPopup');openPopup('reportHistoryPopup');
- const box=qs('reportHistoryList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';
- try{
-  const r=await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(id)}`,{cache:'no-store'});
-  const d=await r.json();
-  if(!r.ok||!d.success)throw new Error(d.message||'دریافت گفتگو ناموفق بود.');
-  const list=d.messages||[];box.innerHTML='';
-  if(!list.length){box.innerHTML='<div class="muted">پیامی برای این گزارش پیدا نشد.</div>';return}
-  for(const m of list){
-   const c=document.createElement('div');c.className='report-history-item '+(m.sender===currentUsername?'mine':'theirs');
-   const s=document.createElement('div');s.className='report-history-sender';const u=userMap.get(m.sender)||usersCache.find(x=>x.username===m.sender);s.textContent=u?.display_name||m.sender||'کاربر';c.appendChild(s);
-   if(m.deleted){c.classList.add('report-deleted');const badge=document.createElement('span');badge.className='reportDeletedBadge';badge.textContent='حذف شده';c.appendChild(badge);const sp=document.createElement('div');sp.style.height='24px';c.appendChild(sp)}
-   else if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.alt='عکس گزارش‌شده';img.loading='lazy';img.src=messageFileUrl(m.id,false);c.appendChild(img)}
-   else if(m.message_type==='audio'&&m.audio){const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a)}
-   else {const body=document.createElement('div');body.className='report-history-text';body.textContent=m.message_type==='sticker'?(m.message||'🙂'):(m.message||'');c.appendChild(body)}
-   const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c)
-  }
-  box.scrollTop=box.scrollHeight;
- }catch(e){console.error('report history',e);box.innerHTML=`<div class="muted">دریافت گفتگو ناموفق بود: ${escapeHtml(e.message||'خطای نامشخص')}</div>`}
-}
+async function openReportHistory(id){closePopup('reportsPopup');openPopup('reportHistoryPopup');const box=$('reportHistoryList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';try{const d=await(await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${id}`,{cache:'no-store'})).json();if(!d.success){box.textContent=d.message||'دریافت گفتگو ناموفق بود.';return}box.innerHTML='';const list=d.messages||[];if(window.renderReportHistoryV11){window.renderReportHistoryV11(list)}else if(!list.length){box.innerHTML='<div class="muted">پیامی برای این گزارش پیدا نشد.</div>'}}catch(e){console.error(e);box.textContent='دریافت گفتگو ناموفق بود.'}}
 // richer message renderer
 const originalRenderer=window.renderMessageElement;
 window.renderMessageElement=function(el,m,mine){
@@ -1554,14 +1516,36 @@ ensureSavedButton();ensureSavedChatPanel();
 (()=>{
   const q=id=>document.getElementById(id);
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-  function playDelete(el){if(!el)return;const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';el.classList.remove('msDeleteExplode','msDeleteTrash');void el.offsetWidth;el.classList.add(cls);return sleep(cls==='msDeleteExplode'?620:700)}
+  async function playDelete(el){
+    if(!el)return;
+    const rect=el.getBoundingClientRect();
+    const type=Math.random()<.5?'explode':'trash';
+    const keyframes=type==='explode'?[
+      {transform:'translate3d(0,0,0) scale(1) rotate(0deg)',opacity:1,filter:'brightness(1)'},
+      {transform:'translate3d(0,-5px,0) scale(1.08) rotate(-2deg)',opacity:1,filter:'brightness(1.8)'},
+      {transform:'translate3d(0,0,0) scale(1.18) rotate(3deg)',opacity:.9,filter:'brightness(2.4)'},
+      {transform:'translate3d(0,0,0) scale(.78) rotate(-8deg)',opacity:.55,filter:'blur(2px)'},
+      {transform:'translate3d(0,0,0) scale(.05) rotate(25deg)',opacity:0,filter:'blur(10px)'}
+    ]:[
+      {transform:'translate3d(0,0,0) rotate(0deg) scale(1)',opacity:1},
+      {transform:'translate3d(-4px,-5px,0) rotate(-4deg) scale(1.03)',opacity:1},
+      {transform:'translate3d(18px,18px,0) rotate(8deg) scale(.88)',opacity:.95},
+      {transform:'translate3d(70px,82px,0) rotate(24deg) scale(.48)',opacity:.65},
+      {transform:'translate3d(125px,145px,0) rotate(34deg) scale(.04)',opacity:0,filter:'blur(5px)'}
+    ];
+    try{
+      const anim=el.animate(keyframes,{duration:type==='explode'?850:950,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});
+      await anim.finished;
+      anim.cancel();
+    }catch{await sleep(850)}
+  }
   function flash(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),850)}
 
   /* 1 — deleted messages disappear completely in normal chats. */
   const oldRemove=window.removeMessage;
   window.removeMessage=async function(id){
-    const el=messageMap.get(String(id));
-    if(el){await playDelete(el);el.remove();messageMap.delete(String(id));messageDataMap.delete(String(id));}
+    const el=window.messageMap?.get(String(id));
+    if(el){await playDelete(el);el.remove();window.messageMap?.delete(String(id));window.messageDataMap?.delete(String(id));}
     else oldRemove?.(id);
   };
   /* Rendered deleted messages (including history reloads) stay invisible in normal chat. */
@@ -1574,16 +1558,26 @@ ensureSavedButton();ensureSavedChatPanel();
     };
   }
 
-  /* 2 — deletion animations. Use the real lexical maps (top-level let bindings), not window properties. */
-  window.deleteMessage=deleteMessage;
+  /* 2 — message delete: random explosion / trash animation. */
+  window.deleteMessage=async function(id){
+    if(!confirm('پیام حذف شود؟'))return;
+    const el=window.messageMap?.get(String(id));
+    if(el)await playDelete(el);
+    const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',id);
+    try{
+      const d=await (await fetch('/delete-message',{method:'POST',body:fd,cache:'no-store'})).json();
+      if(!d.success){el?.classList.remove('msDeleteExplode','msDeleteTrash');alert(d.message||'حذف پیام ناموفق بود');return}
+      el?.remove();window.messageMap?.delete(String(id));window.messageDataMap?.delete(String(id));
+    }catch(e){el?.classList.remove('msDeleteExplode','msDeleteTrash');alert('ارتباط با سرور برای حذف پیام برقرار نشد.')}
+  };
+
+  /* 2 — delete conversation animation (after confirmation). */
   window.deleteConversation=async function(){
     if(selectedType!=='user'||!selectedUser)return;
     const target=selectedUser,name=selectedName();
     if(!confirm(`گفتگوی «${name}» از چت‌های اخیر شما حذف شود؟\n\nپیام‌ها حذف نمی‌شوند و اگر دوباره پیام بفرستی/بگیری، گفتگو دوباره ظاهر می‌شود.`))return;
-    const item=userButtonMap.get(target)||document.querySelector(`#users .userItem[data-user="${CSS.escape(target)}"]`);
-    const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';
-    if(item){item.classList.remove('msDeleteExplode','msDeleteTrash');void item.offsetWidth;item.classList.add(cls);}
-    await sleep(cls==='msDeleteExplode'?650:760);
+    const item=window.userButtonMap?.get?.(target)||[...document.querySelectorAll('#users .userItem')].find(x=>x.dataset.username===target);
+    if(item)await playDelete(item);
     const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('other_username',target);
     try{
       const r=await fetch('/api/delete-conversation',{method:'POST',body:fd,cache:'no-store'});const d=await r.json();
@@ -1594,17 +1588,16 @@ ensureSavedButton();ensureSavedChatPanel();
       q('deleteConversationButton').style.display='none';q('membersButton').style.display='none';q('deleteGroupButton').style.display='none';setHeader('','','');
     }catch(e){item?.classList.remove('msDeleteExplode','msDeleteTrash');console.error(e);alert(e.message||'حذف گفتگو ناموفق بود.')}
   };
+  /* 2 — delete group animation (after confirmation). */
   window.deleteGroup=async function(){
     if(selectedType!=='group'||!selectedGroup)return;
     if(selectedGroup.owner!==currentUsername)return alert('فقط سازنده گروه می‌تواند گروه را حذف کند.');
     const gid=String(selectedGroup.id);
     if(!confirm(`گروه «${selectedGroup.name}» حذف شود؟`))return;
-    const item=groupButtonMap.get(gid)||document.querySelector(`#groups .groupItem[data-key="${CSS.escape(gid)}"]`);
-    const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';
-    if(item){item.classList.remove('msDeleteExplode','msDeleteTrash');void item.offsetWidth;item.classList.add(cls);}
-    await sleep(cls==='msDeleteExplode'?650:760);
+    const item=window.groupButtonMap?.get?.(gid)||[...document.querySelectorAll('#groups .groupItem')].find(x=>String(x.dataset.key||x.dataset.groupId)===String(gid));
+    if(item)await playDelete(item);
     const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('group_id',selectedGroup.id);
-    try{const d=await(await fetch('/delete-group',{method:'POST',body:fd,cache:'no-store'})).json();if(!d.success)throw new Error(d.message||'حذف گروه ناموفق بود.');}
+    try{const d=await (await fetch('/delete-group',{method:'POST',body:fd,cache:'no-store'})).json();if(!d.success)throw new Error(d.message||'حذف گروه ناموفق بود.');}
     catch(e){item?.classList.remove('msDeleteExplode','msDeleteTrash');alert(e.message||'حذف گروه ناموفق بود.')}
   };
 
@@ -1619,16 +1612,16 @@ ensureSavedButton();ensureSavedChatPanel();
 
   /* 4 — edit animation. */
   const oldEdit=window.editMessage;
-  window.editMessage=async function(id,old){const el=messageMap.get(String(id));if(el)flash(el,'msEditingFlash');const r=await oldEdit?.apply(this,arguments);const fresh=window.messageMap?.get(String(id));if(fresh)flash(fresh,'msEditingFlash');return r};
+  window.editMessage=async function(id,old){const el=window.messageMap?.get(String(id));if(el)flash(el,'msEditingFlash');const r=await oldEdit?.apply(this,arguments);const fresh=window.messageMap?.get(String(id));if(fresh)flash(fresh,'msEditingFlash');return r};
   /* 5 — forward animation. */
   const oldForward=window.openForwardPopup;
-  if(oldForward)window.openForwardPopup=async function(m){if(m){flash(messageMap.get(String(m.id)),'msForwardFlash')}const r=await oldForward.apply(this,arguments);const p=q('forwardMessagePopup');if(p)flash(p.querySelector('.popupCard'),'msForwardFlash');return r};
+  if(oldForward)window.openForwardPopup=async function(m){if(m){flash(window.messageMap?.get(String(m.id)),'msForwardFlash')}const r=await oldForward.apply(this,arguments);const p=q('forwardMessagePopup');if(p)flash(p.querySelector('.popupCard'),'msForwardFlash');return r};
   /* 6 — save animation. */
   const oldSave=window.toggleSavedMessage;
-  if(oldSave)window.toggleSavedMessage=async function(m){if(m)flash(messageMap.get(String(m.id)),'msSaveFlash');return oldSave.apply(this,arguments)};
+  if(oldSave)window.toggleSavedMessage=async function(m){if(m)flash(window.messageMap?.get(String(m.id)),'msSaveFlash');return oldSave.apply(this,arguments)};
   /* 7 — reply animation. */
   const oldReply=window.startReply;
-  if(oldReply)window.startReply=function(m){if(m)flash(messageMap.get(String(m.id)),'msReplyFlash');return oldReply.apply(this,arguments)};
+  if(oldReply)window.startReply=function(m){if(m)flash(window.messageMap?.get(String(m.id)),'msReplyFlash');return oldReply.apply(this,arguments)};
 
   /* 8 — image sending bug fix: imageButton did not exist in the V9 DOM. */
   window.sendSelectedImage=async function(){
@@ -1660,7 +1653,36 @@ ensureSavedButton();ensureSavedChatPanel();
   }
   fixAvatarPicker();
 
-  /* 11 — report history is handled by the main function above. */
+  /* 11 — report history now shows real images/voices and marks deleted messages. */
+  const oldReportHistory=window.openReportHistory;
+  window.openReportHistory=async function(id){
+    if(typeof oldReportHistory!=='function')return;
+    await oldReportHistory.apply(this,arguments);
+    const box=q('reportHistoryList');if(!box)return;
+    const items=box.querySelectorAll('.report-history-item');
+    /* Re-fetch the history so we have the exact message objects and can render media. */
+    try{
+      const d=await (await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(id)}`,{cache:'no-store'})).json();
+      if(!d.success)return;
+      box.innerHTML='';
+      for(const m of (d.messages||[])){
+        const c=document.createElement('div');c.className='report-history-item '+(m.sender===currentUsername?'mine':'theirs');
+        const s=document.createElement('div');s.className='report-history-sender';s.textContent=userMap.get(m.sender)?.display_name||m.sender||'کاربر';c.appendChild(s);
+        if(m.deleted){
+          const body=document.createElement('div');body.className='report-history-deleted';body.textContent='این پیام حذف شده است';
+          const badge=document.createElement('span');badge.className='reportDeletedBadge';badge.textContent='حذف شده';c.append(body,badge);
+        }else if(m.message_type==='image'){
+          const img=document.createElement('img');img.className='report-history-media';img.alt='عکس گزارش‌شده';img.loading='lazy';img.src=messageFileUrl(m.id,false);img.onclick=()=>openImageViewer(m.id,img.src);c.appendChild(img);
+        }else if(m.message_type==='audio'){
+          const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a);
+        }else{
+          const body=document.createElement('div');body.className='report-history-text';body.textContent=m.message_type==='sticker'?(m.message||'🙂'):(m.message||'');c.appendChild(body);
+        }
+        const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c);
+      }
+      box.scrollTop=box.scrollHeight;
+    }catch(e){console.error('report history media render',e)}
+  };
 
   /* 12/13 — phone layout + keyboard stability. */
   function keepKeyboard(){const input=q('message');if(!input)return;try{input.focus({preventScroll:true})}catch{input.focus()}}
@@ -1713,7 +1735,7 @@ ensureSavedButton();ensureSavedChatPanel();
  const baseRenderer=window.renderMessageElement;
  window.renderMessageElement=function(el,m,mine){
    baseRenderer(el,m,mine);
-   if(!m.group_id)return;
+   if(!m.group_id || mine)return;
    const head=el.querySelector('.messageHeader');
    if(!head)return;
    const sender=m.sender;
@@ -1722,7 +1744,7 @@ ensureSavedButton();ensureSavedChatPanel();
    const av=document.createElement('img');av.className='groupMessageAvatar';av.alt='';
    setAvatar(av,u?.avatar,u?.display_name||sender,userAvatarUrl(sender));
    av.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
-   const name=document.createElement('span');name.className='groupMessageSender';name.textContent=mine?'من':(u?.display_name||sender);
+   const name=document.createElement('span');name.className='groupMessageSender';name.textContent=u?.display_name||sender;
    name.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
    wrap.append(av,name);head.replaceWith(wrap);
  };
@@ -1758,6 +1780,8 @@ ensureSavedButton();ensureSavedChatPanel();
    const target=selectedType==='group'?groupButtonMap?.get?.(String(selectedGroupId)):userButtonMap?.get?.(selectedUser);
    if(target){animate(target,Math.random()<.5?'v11-delete-explode':'v11-delete-trash')}
  },true);
+ // Make message hover transitions reliable: entrance animations must not keep a transform after finishing.
+ document.addEventListener('animationend',e=>{const el=e.target;if(el?.classList?.contains('message'))el.classList.add('msEntranceFinished')},{passive:true});
  // Replace report-history renderer so images/audio work and deleted messages only show a corner badge.
  window.renderReportHistoryV11=function(list){
    const box=$('reportHistoryList');box.innerHTML='';
@@ -1765,10 +1789,11 @@ ensureSavedButton();ensureSavedChatPanel();
    for(const m of list){
      const c=document.createElement('div');const mine=m.sender===currentUsername;c.className='report-history-item '+(mine?'mine':'theirs');
      const s=document.createElement('div');s.className='report-history-sender';s.textContent=currentUser(m.sender)?.display_name||m.sender||'کاربر';c.appendChild(s);
-     if(m.deleted){c.classList.add('report-deleted');const badge=document.createElement('span');badge.className='report-deleted-badge';badge.textContent='حذف شده';c.appendChild(badge);const sp=document.createElement('div');sp.className='report-deleted-space';c.appendChild(sp)}
-     else if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.src=messageFileUrl(m.id,false);img.alt='تصویر گزارش‌شده';img.loading='lazy';c.appendChild(img)}
+     if(m.deleted)c.classList.add('report-deleted');
+     if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.src=messageFileUrl(m.id,false);img.alt='تصویر گزارش‌شده';img.loading='lazy';c.appendChild(img)}
      else if(m.message_type==='audio'&&m.audio){const a=document.createElement('audio');a.className='report-history-media';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a)}
-     else {const body=document.createElement('div');body.className='report-history-text';body.textContent=uiPreview(m);c.appendChild(body)}
+     else {const body=document.createElement('div');body.className='report-history-text';body.textContent=m.message||uiPreview(m);c.appendChild(body)}
+     if(m.deleted){const badge=document.createElement('span');badge.className='report-deleted-badge';badge.textContent='حذف شده';c.appendChild(badge)}
      const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c)
    }
    box.scrollTop=box.scrollHeight;

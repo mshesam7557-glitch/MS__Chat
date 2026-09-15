@@ -171,7 +171,7 @@ body{transition:background-image .7s var(--ms-ease),background-color .5s ease}
 @keyframes msSend{0%{transform:scale(.8) translateY(8px);opacity:0}60%{transform:scale(1.06) translateY(-2px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
 .message{animation:msSend .34s var(--ms-spring) both;transform-origin:bottom right;transition:transform .30s cubic-bezier(.22,.8,.22,1),box-shadow .30s ease,filter .30s ease!important;will-change:transform}
 .message.theirs{transform-origin:bottom left}
-.message:hover{transform:translateY(-3px) scale(1.008)!important;filter:saturate(1.04);box-shadow:0 10px 25px rgba(0,0,0,.11)!important}.message.msEntranceFinished{animation:none!important}
+.message:not(.msDeleteExplode):not(.msDeleteTrash){transition:transform .28s cubic-bezier(.22,.8,.22,1),box-shadow .28s ease,filter .28s ease!important}.message:hover:not(.msDeleteExplode):not(.msDeleteTrash){transform:translateY(-3px) scale(1.008)!important;filter:saturate(1.04);box-shadow:0 10px 25px rgba(0,0,0,.11)!important}
 .message.mine{animation-name:msSend}
 .message.theirs{animation-name:msSlideInLeft}
 .msgImage,.audioMessage,.musicMessage{transition:transform .28s var(--ms-spring),filter .28s ease,box-shadow .28s ease}
@@ -905,7 +905,7 @@ async function deleteConversation(){
  }catch(e){console.error(e);alert(e.message||"حذف گفتگو ناموفق بود.")}
 }
 async function editMessage(id,old){const t=prompt("متن جدید:",old);if(t===null||!t.trim()||t.trim()===old)return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);fd.append("text",t.trim());const d=await (await fetch("/edit-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
-async function deleteMessage(id){if(!confirm("پیام حذف شود؟"))return;const fd=new FormData();fd.append("username",currentUsername);fd.append("token",authToken);fd.append("message_id",id);const d=await (await fetch("/delete-message",{method:"POST",body:fd})).json();if(!d.success)alert(d.message)}
+async function deleteMessage(id){return window.deleteMessage ? window.deleteMessage(id) : Promise.resolve();}
 
 const STICKERS=["😂","🤣","😍","🥰","😘","😎","🤩","🥳","😴","😱","🤔","🙄","😡","😭","🤯","🥹","❤️","💔","🔥","👏","👍","👎","🙏","🎉","💀","👀","🤝","🚀","🎮","⚡"];
 function buildStickerPanel(){const grid=qs("stickerGrid");if(!grid||grid.children.length)return;for(const sticker of STICKERS){const b=document.createElement("button");b.className="stickerBtn";b.type="button";b.textContent=sticker;b.title="ارسال استیکر";b.onclick=()=>sendSticker(sticker);grid.appendChild(b)}}
@@ -1774,7 +1774,7 @@ ensureSavedButton();ensureSavedChatPanel();
 
  },true);
  // Make message hover transitions reliable: entrance animations must not keep a transform after finishing.
- document.addEventListener('animationend',e=>{const el=e.target;if(el?.classList?.contains('message'))el.classList.add('msEntranceFinished')},{passive:true});
+ document.addEventListener('animationend',e=>{const el=e.target;if(el?.classList?.contains('message')&&/^ms(Send|SlideInLeft|MsgIn|MessageIn)/.test(e.animationName)){el.style.animationName='none';}},{passive:true});
  // Replace report-history renderer so images/audio work and deleted messages only show a corner badge.
  window.renderReportHistoryV11=function(list){
    const box=$('reportHistoryList');box.innerHTML='';
@@ -1804,16 +1804,29 @@ ensureSavedButton();ensureSavedChatPanel();
   // to window.deleteMessage so the animated wrapper is used (not the old lexical function).
   async function playDeleteFinal(el){
     if(!el)return;
-    const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';
+    const trash=Math.random()<0.5;
     el.classList.remove('msDeleteExplode','msDeleteTrash');
     void el.offsetWidth;
-    el.classList.add(cls);
-    await new Promise(resolve=>{
-      let done=false;
-      const finish=()=>{if(done)return;done=true;el.removeEventListener('animationend',finish);resolve()};
-      el.addEventListener('animationend',finish,{once:true});
-      setTimeout(finish,1000);
-    });
+    const keyframes=trash?[
+      {opacity:1,transform:'translate3d(0,0,0) rotate(0deg) scale(1)',filter:'blur(0)'},
+      {opacity:1,transform:'translate3d(-5px,-5px,0) rotate(-4deg) scale(1.03)',filter:'blur(0)'},
+      {opacity:.88,transform:'translate3d(28px,42px,0) rotate(14deg) scale(.72)',filter:'blur(.3px)'},
+      {opacity:0,transform:'translate3d(120px,145px,0) rotate(35deg) scale(.05)',filter:'blur(5px)'}
+    ]:[
+      {opacity:1,transform:'scale(1) rotate(0deg)',filter:'brightness(1)'},
+      {opacity:1,transform:'scale(1.12) rotate(-3deg)',filter:'brightness(1.7)'},
+      {opacity:.7,transform:'scale(.72) rotate(7deg)',filter:'blur(2px) brightness(1.5)'},
+      {opacity:0,transform:'scale(.04) rotate(28deg)',filter:'blur(8px)'}
+    ];
+    try{
+      const a=el.animate(keyframes,{duration:760,easing:'cubic-bezier(.22,.75,.25,1)',fill:'forwards'});
+      await a.finished.catch(()=>{});
+      el.style.opacity='0';
+      el.style.pointerEvents='none';
+    }catch{
+      el.classList.add(trash?'msDeleteTrash':'msDeleteExplode');
+      await new Promise(r=>setTimeout(r,780));
+    }
   }
   window.msPlayDeleteFinal=playDeleteFinal;
 
@@ -1835,16 +1848,17 @@ ensureSavedButton();ensureSavedChatPanel();
 
   // Keep deletion visual until it finishes, then remove locally.
   window.deleteMessage=async function(id){
-    const el=window.messageMap?.get(String(id));
-    if(!el)return;
+    const key=String(id);
+    const el=window.messageMap?.get(key)||document.querySelector(`.message[data-id=\"${CSS.escape(key)}\"]`);
     if(!confirm('پیام حذف شود؟'))return;
-    await playDeleteFinal(el);
     const fd=new FormData();fd.append('username',currentUsername);fd.append('token',authToken);fd.append('message_id',id);
     try{
-      const d=await (await fetch('/delete-message',{method:'POST',body:fd,cache:'no-store'})).json();
-      if(!d.success){el.classList.remove('msDeleteExplode','msDeleteTrash');alert(d.message||'حذف پیام ناموفق بود');return}
-      el.remove();window.messageMap.delete(String(id));window.messageDataMap.delete(String(id));
-    }catch(e){el.classList.remove('msDeleteExplode','msDeleteTrash');alert('ارتباط با سرور برای حذف پیام برقرار نشد.')}
+      if(el)await playDeleteFinal(el);
+      const resp=await fetch('/delete-message',{method:'POST',body:fd,cache:'no-store'});
+      const d=await resp.json();
+      if(!resp.ok||!d.success){if(el){el.style.opacity='';el.style.pointerEvents='';el.getAnimations?.().forEach(a=>a.cancel())}alert(d.message||'حذف پیام ناموفق بود');return}
+      el?.remove();window.messageMap?.delete(key);window.messageDataMap?.delete(key);
+    }catch(e){if(el){el.style.opacity='';el.style.pointerEvents='';el.getAnimations?.().forEach(a=>a.cancel())}console.error(e);alert('ارتباط با سرور برای حذف پیام برقرار نشد.')}
   };
 
   // Final report list: only open reports are fetched by the server. Review is persisted.
@@ -1887,24 +1901,25 @@ ensureSavedButton();ensureSavedChatPanel();
     closePopup('reportsPopup');openPopup('reportHistoryPopup');
     const box=$('reportHistoryList');box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';
     try{
+      // report_id is authoritative; the server resolves the exact reported message from it.
       const qsx=`username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(messageId||'')}&report_id=${encodeURIComponent(reportId||'')}`;
       const resp=await fetch(`/api/admin/report-history?${qsx}`,{cache:'no-store'});
       const d=await resp.json();
-      if(!resp.ok||!d.success)throw new Error(d.message||'دریافت گفتگو ناموفق بود.');
+      if(!resp.ok||!d.success)throw new Error(d.message||`دریافت گفتگو ناموفق بود (${resp.status})`);
       const list=d.messages||[];box.innerHTML='';
       if(!list.length){box.innerHTML='<div class="muted">پیامی برای این گزارش پیدا نشد.</div>';return}
       for(const m of list){
         const c=document.createElement('div');c.className='report-history-item '+(m.sender===currentUsername?'mine':'theirs');
         const s=document.createElement('div');s.className='report-history-sender';s.textContent=(userMap.get(m.sender)?.display_name||m.sender||'کاربر');c.appendChild(s);
+        // Deleted messages still show their original content/media in moderation history.
         if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.src=messageFileUrl(m.id,false);img.alt='تصویر';img.loading='lazy';c.appendChild(img)}
-        else if(m.message_type==='audio'&&m.audio){const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a)}
-        else if(m.message_type==='music'&&m.audio){const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.src=messageFileUrl(m.id,false);c.appendChild(a);}
+        else if((m.message_type==='audio'||m.message_type==='music')&&m.audio){const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a)}
         else {const body=document.createElement('div');body.className='report-history-text';body.textContent=m.message_type==='sticker'?(m.message||'🙂'):(m.message||'');c.appendChild(body)}
-        if(m.deleted){const badge=document.createElement('span');badge.className='report-deleted-badge';badge.textContent='حذف شده';c.appendChild(badge)}
+        if(m.deleted){const badge=document.createElement('span');badge.className='report-deleted-badge';badge.textContent='حذف شده';c.appendChild(badge);c.classList.add('report-deleted')}
         const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c);
       }
       box.scrollTop=box.scrollHeight;
-    }catch(e){console.error('final report history',e);box.textContent=e.message||'دریافت گفتگو ناموفق بود.'}
+    }catch(e){console.error('final report history',e);box.innerHTML=`<div class="muted">${escapeHtml(e.message||'دریافت گفتگو ناموفق بود.')}</div>`}
   };
 
   // Make sidebar delete buttons use the existing animated wrappers without a second competing animation.

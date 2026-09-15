@@ -216,6 +216,13 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 
+
+<style id="msV12HoverFix">
+/* Smooth message hover: use the independent CSS translate property so the entry animation
+   and the hover motion do not fight over the transform property. */
+.message{translate:0 0;transition:translate .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease,filter .28s ease!important}
+.message:hover{translate:0 -3px;transform:scale(1.008)!important;box-shadow:0 10px 25px rgba(0,0,0,.11)!important}
+</style>
 </head>
 <body>
 <div id="login">
@@ -1718,9 +1725,12 @@ ensureSavedButton();ensureSavedChatPanel();
    if(!head)return;
    const sender=m.sender;
    const u=currentUser(sender);
+   const isMine=sender===currentUsername;
+   const senderAvatar=isMine?(currentAvatar||''):(u?.avatar||'');
+   const senderName=isMine?(currentDisplayName||currentUsername):(u?.display_name||sender);
    const wrap=document.createElement('div');wrap.className='groupMessageHead';
    const av=document.createElement('img');av.className='groupMessageAvatar';av.alt='';
-   setAvatar(av,u?.avatar,u?.display_name||sender,userAvatarUrl(sender));
+   setAvatar(av,senderAvatar,senderName,userAvatarUrl(sender));
    av.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
    const name=document.createElement('span');name.className='groupMessageSender';name.textContent=mine?'من':(u?.display_name||sender);
    name.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
@@ -1776,5 +1786,30 @@ ensureSavedButton();ensureSavedChatPanel();
 })();
 </script>
 
+
+<style id="msV12GroupAvatarFix">
+.groupMessageAvatar{width:30px!important;height:30px!important;min-width:30px!important;display:block!important}
+</style>
+<script id="msV12GroupAvatarJS">
+(()=>{
+  const q=id=>document.getElementById(id);
+  const currentUserV12=u=>userMap?.get?.(u)||usersCache?.find?.(x=>x.username===u)||null;
+  const base=window.renderMessageElement;
+  if(!base)return;
+  window.renderMessageElement=function(el,m,mine){
+    base(el,m,mine);
+    if(!m?.group_id)return;
+    const head=el.querySelector('.groupMessageHead');
+    if(!head)return;
+    const av=head.querySelector('.groupMessageAvatar');
+    if(!av)return;
+    const u=currentUserV12(m.sender);
+    const isMine=m.sender===currentUsername;
+    const name=isMine?(currentDisplayName||currentUsername):(u?.display_name||m.sender);
+    const avatar=isMine?(currentAvatar||''):(u?.avatar||'');
+    setAvatar(av,avatar,name,userAvatarUrl(m.sender));
+  };
+})();
+</script>
 </body>
 </html>

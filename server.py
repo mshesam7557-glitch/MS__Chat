@@ -3350,11 +3350,18 @@ async def api_admin_reports(username: str, token: str):
     return {'success':True,'reports':out}
 
 @app.get('/api/admin/report-history')
-async def api_admin_report_history(username: str, token: str, message_id: int):
+async def api_admin_report_history(username: str, token: str, message_id: int = None, report_id: int = None):
     if not _admin_ok(username,token):
         return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
     with get_db() as c:
         with c.cursor() as cur:
+            if report_id:
+                cur.execute('SELECT message_id FROM message_reports WHERE id=%s',(report_id,))
+                rr=cur.fetchone()
+                if rr and rr.get('message_id') is not None:
+                    message_id=rr['message_id']
+            if message_id is None:
+                return {'success':False,'messages':[],'message':'شناسه پیام گزارش‌شده نامعتبر است.'}
             cur.execute('SELECT sender,receiver,group_id FROM messages WHERE id=%s',(message_id,))
             row=cur.fetchone()
             if not row:

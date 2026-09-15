@@ -3359,23 +3359,46 @@ async def api_admin_reports(username: str, token: str):
 
 @app.get('/api/admin/report-history')
 async def api_admin_report_history(username: str, token: str, message_id: int):
-    if not _admin_ok(username,token): return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
-    with get_db() as c:
-        with c.cursor() as cur:
-            cur.execute('SELECT sender,receiver,group_id FROM messages WHERE id=%s',(message_id,)); row=cur.fetchone()
-    if not row: return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
-    if row['group_id']:
-        msgs=await asyncio.to_thread(get_group_history,row['group_id'],username)
-        return {'success':True,'kind':'group','group_id':row['group_id'],'messages':msgs}
-    # The admin is usually not a participant in the reported direct chat.
-    # Use the actual sender/receiver pair from the reported message; using the
-    # admin username here made newly reported PVs incorrectly return no messages.
-    sender=row['sender']
-    receiver=row['receiver']
-    if not sender or not receiver:
-        return {'success':False,'messages':[],'message':'اطلاعات گفتگوی پیام گزارش‌شده ناقص است.'}
-    msgs=await asyncio.to_thread(get_direct_history,sender,receiver)
-    return {'success':True,'kind':'user','user':receiver if sender==username else sender,'messages':msgs}
+    """Return the full conversation containing a reported message for the owner.
+
+    This endpoint deliberately does not use the normal user history helpers: an admin
+    is not necessarily a participant in the reported PV/group, and normal history
+    helpers also apply per-user hidden-message filtering. Report review must see the
+    actual conversation, including deleted messages and media.
+    """
+    if not _admin_ok(username, token):
+        return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
+    try:
+        with get_db() as c:
+            with c.cursor() as cur:
+                cur.execute(_message_select_sql() + " WHERE id=%s", (message_id,))
+                reported=cur.fetchone()
+                if not reported:
+                    return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
+                if reported['group_id'] is not None:
+                    cur.execute(
+                        _message_select_sql() +
+                        " WHERE group_id=%s ORDER BY id DESC LIMIT %s",
+                        (reported['group_id'], MAX_HISTORY_MESSAGES)
+                    )
+                    rows=cur.fetchall()
+                    kind='group'; group_id=reported['group_id']; user=None
+                else:
+                    sender=reported['sender']; receiver=reported['receiver']
+                    if not sender or not receiver:
+                        return {'success':False,'messages':[],'message':'اطلاعات گفتگوی پیام گزارش‌شده ناقص است.'}
+                    cur.execute(
+                        _message_select_sql() +
+                        " WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id DESC LIMIT %s",
+                        (sender,receiver,receiver,sender,MAX_HISTORY_MESSAGES)
+                    )
+                    rows=cur.fetchall()
+                    kind='user'; group_id=None; user=receiver if sender==username else sender
+        messages=rows_to_messages(rows)
+        return {'success':True,'kind':kind,'group_id':group_id,'user':user,'messages':messages}
+    except Exception as error:
+        print('Admin report history error:', repr(error))
+        return {'success':False,'messages':[],'message':'دریافت گفتگو ناموفق بود.'}
 
 @app.post('/api/admin/report-status')
 async def api_admin_report_status(username: str=Form(...), token: str=Form(...), report_id: int=Form(...), status: str=Form(...)):

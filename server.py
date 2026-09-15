@@ -1496,14 +1496,11 @@ async def message_file(message_id: int, username: str, token: str, download: int
     if not row or row["deleted"]:
         return Response(status_code=404, content="File not found")
 
-    # The owner/admin can inspect reported media in the moderation history.
-    # Normal users still follow the original sender/receiver/group access rules.
-    allowed = username == OWNER_USERNAME
-    if not allowed:
-        if row["group_id"]:
-            allowed = is_group_member(row["group_id"], username)
-        else:
-            allowed = username in {row["sender"], row["receiver"]}
+    allowed = False
+    if row["group_id"]:
+        allowed = is_group_member(row["group_id"], username)
+    else:
+        allowed = username in {row["sender"], row["receiver"]}
     if not allowed:
         return Response(status_code=403, content="Forbidden")
 
@@ -2007,17 +2004,6 @@ async def add_group_members(
             for member in all_members
         ], return_exceptions=True)
 
-        # Announce every newly-added member inside the group itself.
-        for member in valid:
-            member_info = next((m for m in info.get("members", []) if m["username"] == member), None)
-            display = (member_info or {}).get("display_name") or member
-            system_id = await asyncio.to_thread(
-                save_message, username, "", f"👤 {display} به گروه اضافه شد", "system", None, None, None, group_id
-            )
-            system_msg = await asyncio.to_thread(get_message, system_id)
-            if system_msg:
-                await deliver_message(system_msg)
-
         return {"success": True, "group": info, "added": valid}
     except Exception as error:
         print("Add group members error:", repr(error))
@@ -2061,24 +2047,6 @@ async def remove_group_member(
         for member in remaining:
             await send_to(member, {"type":"group-info", "group":info})
             await send_to(member, {"type":"groups", "groups":await asyncio.to_thread(get_user_groups, member)})
-
-        # Announce the removal to the members who remain in the group.
-        member_info = next((m for m in (info or {}).get("members", []) if m["username"] == member_username), None)
-        display = (member_info or {}).get("display_name") or member_username
-        # If the user has already been removed, their profile is still available from users.
-        if not member_info:
-            try:
-                u = await asyncio.to_thread(get_user_info, member_username)
-                display = (u or {}).get("display_name") or member_username
-            except Exception:
-                pass
-        if remaining:
-            system_id = await asyncio.to_thread(
-                save_message, username, "", f"👤 {display} از گروه حذف شد", "system", None, None, None, group_id
-            )
-            system_msg = await asyncio.to_thread(get_message, system_id)
-            if system_msg:
-                await deliver_message(system_msg)
         return {"success": True, "group": info, "removed": member_username}
     except Exception as error:
         print("Remove group member error:", repr(error))
@@ -3359,46 +3327,86 @@ async def api_admin_reports(username: str, token: str):
 
 @app.get('/api/admin/report-history')
 async def api_admin_report_history(username: str, token: str, message_id: int):
-    """Return the full conversation containing a reported message for the owner.
-
-    This endpoint deliberately does not use the normal user history helpers: an admin
-    is not necessarily a participant in the reported PV/group, and normal history
-    helpers also apply per-user hidden-message filtering. Report review must see the
-    actual conversation, including deleted messages and media.
-    """
+    # Admin-only report review. Do NOT use the normal user/group history helpers:
+    # the owner is usually not a participant in the reported conversation.
     if not _admin_ok(username, token):
         return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
     try:
         with get_db() as c:
             with c.cursor() as cur:
-                cur.execute(_message_select_sql() + " WHERE id=%s", (message_id,))
+                cur.execute("""
+                    SELECT id, sender, receiver, message, audio, status,
+                           message_type, media, reply_to, edited, deleted,
+                           group_id, created_at
+                    FROM messages
+                    WHERE id=%s
+                """, (message_id,))
                 reported=cur.fetchone()
+
                 if not reported:
                     return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
+
                 if reported['group_id'] is not None:
-                    cur.execute(
-                        _message_select_sql() +
-                        " WHERE group_id=%s ORDER BY id DESC LIMIT %s",
-                        (reported['group_id'], MAX_HISTORY_MESSAGES)
-                    )
+                    cur.execute("""
+                        SELECT id, sender, receiver, message, audio, status,
+                               message_type, media, reply_to, edited, deleted,
+                               group_id, created_at
+                        FROM messages
+                        WHERE group_id=%s
+                        ORDER BY id DESC
+                        LIMIT %s
+                    """, (reported['group_id'], MAX_HISTORY_MESSAGES))
                     rows=cur.fetchall()
-                    kind='group'; group_id=reported['group_id']; user=None
+                    kind='group'
+                    group_id=reported['group_id']
+                    user=None
                 else:
-                    sender=reported['sender']; receiver=reported['receiver']
+                    sender=reported['sender']
+                    receiver=reported['receiver']
                     if not sender or not receiver:
                         return {'success':False,'messages':[],'message':'اطلاعات گفتگوی پیام گزارش‌شده ناقص است.'}
-                    cur.execute(
-                        _message_select_sql() +
-                        " WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id DESC LIMIT %s",
-                        (sender,receiver,receiver,sender,MAX_HISTORY_MESSAGES)
-                    )
+
+                    cur.execute("""
+                        SELECT id, sender, receiver, message, audio, status,
+                               message_type, media, reply_to, edited, deleted,
+                               group_id, created_at
+                        FROM messages
+                        WHERE group_id IS NULL
+                          AND ((sender=%s AND receiver=%s)
+                               OR (sender=%s AND receiver=%s))
+                        ORDER BY id DESC
+                        LIMIT %s
+                    """, (sender, receiver, receiver, sender, MAX_HISTORY_MESSAGES))
                     rows=cur.fetchall()
-                    kind='user'; group_id=None; user=receiver if sender==username else sender
-        messages=rows_to_messages(rows)
-        return {'success':True,'kind':kind,'group_id':group_id,'user':user,'messages':messages}
+                    kind='user'
+                    group_id=None
+                    user=receiver
+
+        # Report review is allowed to see private media. Generate signed URLs
+        # here, instead of asking the normal message-file endpoint.
+        media_paths=[]
+        for row in rows:
+            if row.get('media'):
+                media_paths.append(row['media'])
+            if row.get('audio'):
+                media_paths.append(row['audio'])
+        signed=create_signed_urls(media_paths)
+
+        messages=[
+            message_row_to_dict(row, signed_media=signed)
+            for row in reversed(rows)
+        ]
+        return {
+            'success':True,
+            'kind':kind,
+            'group_id':group_id,
+            'user':user,
+            'messages':messages
+        }
     except Exception as error:
         print('Admin report history error:', repr(error))
         return {'success':False,'messages':[],'message':'دریافت گفتگو ناموفق بود.'}
+
 
 @app.post('/api/admin/report-status')
 async def api_admin_report_status(username: str=Form(...), token: str=Form(...), report_id: int=Form(...), status: str=Form(...)):

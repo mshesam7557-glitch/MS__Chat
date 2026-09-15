@@ -216,6 +216,40 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 
+
+<style id="mschat-smooth-message-hover-fix">
+/* Smooth message hover: deliberately use top, not transform.
+   This prevents the hover effect from competing with the message entrance animation. */
+.message{
+  position:relative!important;
+  top:0!important;
+  transform:none!important;
+  transition:
+    top .32s cubic-bezier(.22,.8,.24,1),
+    box-shadow .32s ease,
+    filter .32s ease!important;
+  will-change:top,box-shadow,filter;
+}
+.message:hover:not(.msDeleteExplode):not(.msDeleteTrash){
+  top:-3px!important;
+  transform:none!important;
+  filter:saturate(1.04);
+  box-shadow:0 10px 25px rgba(0,0,0,.11)!important;
+}
+.message:not(.msDeleteExplode):not(.msDeleteTrash){
+  transition:
+    top .32s cubic-bezier(.22,.8,.24,1),
+    box-shadow .32s ease,
+    filter .32s ease!important;
+}
+@media (hover:none){
+  .message:hover:not(.msDeleteExplode):not(.msDeleteTrash){
+    top:0!important;
+    filter:none;
+  }
+}
+</style>
+
 </head>
 <body>
 <div id="login">

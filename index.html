@@ -1987,5 +1987,40 @@ ensureSavedButton();ensureSavedChatPanel();
   `;document.head.appendChild(st);
 })();
 </script>
+
+<style id="msFinalFixV13">
+/* Hover is driven by a class, so entrance animations can never snap it. */
+#messages .message{
+  transform:none!important;
+  top:0!important;
+  animation:none!important;
+  transition:top .34s cubic-bezier(.22,.8,.24,1),box-shadow .34s ease,filter .34s ease!important;
+}
+#messages .message.msHovering{
+  top:-4px!important;
+  box-shadow:0 12px 28px rgba(0,0,0,.14)!important;
+  filter:saturate(1.05);
+}
+@media(hover:none){#messages .message.msHovering{top:0!important;box-shadow:none!important;filter:none}}
+#messages .message.mine .groupMessageHead{display:none!important}
+</style>
+<script id="msFinalFixV13JS">
+(()=>{
+ const box=document.getElementById('messages');
+ if(!box)return;
+ const bind=el=>{
+   if(!el||el.nodeType!==1||!el.classList.contains('message')||el.dataset.hoverV13)return;
+   el.dataset.hoverV13='1';
+   el.addEventListener('mouseenter',()=>el.classList.add('msHovering'));
+   el.addEventListener('mouseleave',()=>el.classList.remove('msHovering'));
+ };
+ box.querySelectorAll('.message').forEach(bind);
+ new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{
+   if(n.nodeType===1){bind(n);n.querySelectorAll?.('.message').forEach(bind);}
+ }))).observe(box,{childList:true});
+ const strip=()=>box.querySelectorAll('.message.mine .groupMessageHead').forEach(x=>x.remove());
+ strip(); new MutationObserver(strip).observe(box,{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>

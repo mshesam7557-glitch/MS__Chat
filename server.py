@@ -3359,30 +3359,44 @@ async def api_admin_reports(username: str, token: str):
 
 @app.get('/api/admin/report-history')
 async def api_admin_report_history(username: str, token: str, message_id: int):
-    """Return the full conversation containing a reported message for the owner.
-    This deliberately bypasses normal participant/hidden-message history rules so
-    moderation can inspect newly reported conversations and deleted messages.
+    """Return the conversation containing a reported message for the owner.
+
+    Uses only the core message columns so report review remains compatible with
+    databases where optional feature columns were not migrated yet.
     """
     if not _admin_ok(username, token):
-        return {"success": False, "messages": [], "message": "دسترسی غیرمجاز."}
+        return {'success':False,'messages':[],'message':'دسترسی غیرمجاز.'}
     try:
         with get_db() as c:
             with c.cursor() as cur:
-                cur.execute(_message_select_sql() + " WHERE id=%s", (message_id,))
-                row = cur.fetchone()
-                if not row:
-                    return {"success": False, "messages": [], "message": "پیام گزارش‌شده پیدا نشد."}
-                if row["group_id"]:
-                    cur.execute(_message_select_sql() + " WHERE group_id=%s ORDER BY id DESC LIMIT %s", (row["group_id"], MAX_HISTORY_MESSAGES))
+                base_sql = """
+                    SELECT id, sender, receiver, message, audio, media, status,
+                           message_type, reply_to, edited, deleted, group_id, created_at
+                    FROM messages
+                """
+                cur.execute(base_sql + " WHERE id=%s", (message_id,))
+                reported = cur.fetchone()
+                if not reported:
+                    return {'success':False,'messages':[],'message':'پیام گزارش‌شده پیدا نشد.'}
+                if reported['group_id'] is not None:
+                    cur.execute(base_sql + " WHERE group_id=%s ORDER BY id ASC LIMIT %s",
+                                (reported['group_id'], MAX_HISTORY_MESSAGES))
                     rows = cur.fetchall()
+                    kind='group'; group_id=reported['group_id']; user=None
                 else:
-                    cur.execute(_message_select_sql() + " WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id DESC LIMIT %s", (row["sender"], row["receiver"], row["receiver"], row["sender"], MAX_HISTORY_MESSAGES))
+                    sender, receiver = reported['sender'], reported['receiver']
+                    if not sender or not receiver:
+                        return {'success':False,'messages':[],'message':'اطلاعات گفتگوی پیام گزارش‌شده ناقص است.'}
+                    cur.execute(base_sql + " WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id ASC LIMIT %s",
+                                (sender, receiver, receiver, sender, MAX_HISTORY_MESSAGES))
                     rows = cur.fetchall()
-        messages = [message_row_to_dict(r) for r in reversed(rows)]
-        return {"success": True, "kind": "group" if row["group_id"] else "user", "group_id": row["group_id"], "messages": messages}
+                    kind='user'; group_id=None; user=receiver if sender==username else sender
+        messages = rows_to_messages(rows)
+        return {'success':True,'kind':kind,'group_id':group_id,'user':user,'messages':messages}
     except Exception as error:
-        print("Report history error:", repr(error))
-        return {"success": False, "messages": [], "message": "دریافت گفتگو ناموفق بود."}
+        print('Admin report history error:', repr(error))
+        return {'success':False,'messages':[],'message':f'دریافت گفتگو ناموفق بود: {type(error).__name__}'}
+
 
 @app.post('/api/admin/report-status')
 async def api_admin_report_status(username: str=Form(...), token: str=Form(...), report_id: int=Form(...), status: str=Form(...)):

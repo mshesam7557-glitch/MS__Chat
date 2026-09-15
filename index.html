@@ -216,13 +216,6 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 
-
-<style id="msV12HoverFix">
-/* Smooth message hover: use the independent CSS translate property so the entry animation
-   and the hover motion do not fight over the transform property. */
-.message{translate:0 0;transition:translate .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease,filter .28s ease!important}
-.message:hover{translate:0 -3px;transform:scale(1.008)!important;box-shadow:0 10px 25px rgba(0,0,0,.11)!important}
-</style>
 </head>
 <body>
 <div id="login">
@@ -1519,11 +1512,60 @@ ensureSavedButton();ensureSavedChatPanel();
   .themeChoice img{object-fit:cover!important}
 }
 </style>
+
+<style id="msDeleteGhostFX">
+.msDeleteGhost{box-sizing:border-box;transform-origin:center;filter:drop-shadow(0 10px 22px rgba(0,0,0,.22));}
+@keyframes msDeleteGhostTrash{
+  0%{opacity:1;transform:translate3d(0,0,0) rotate(0deg) scale(1)}
+  18%{transform:translate3d(-5px,-8px,0) rotate(-5deg) scale(1.04)}
+  48%{opacity:.98;transform:translate3d(18px,35px,0) rotate(10deg) scale(.86)}
+  78%{opacity:.72;transform:translate3d(58px,82px,0) rotate(22deg) scale(.52)}
+  100%{opacity:0;transform:translate3d(95px,128px,0) rotate(32deg) scale(.08);filter:blur(5px)}
+}
+@keyframes msDeleteGhostExplode{
+  0%{opacity:1;transform:scale(1) rotate(0);filter:brightness(1) drop-shadow(0 10px 22px rgba(0,0,0,.22))}
+  20%{transform:scale(1.07) rotate(-3deg);filter:brightness(1.8) drop-shadow(0 0 16px rgba(255,170,40,.7))}
+  42%{transform:scale(1.15) rotate(4deg);filter:brightness(2.4) drop-shadow(0 0 28px rgba(255,80,40,.9))}
+  70%{opacity:.58;transform:scale(.7) rotate(-10deg);filter:blur(2px) brightness(1.8)}
+  100%{opacity:0;transform:scale(.03) rotate(26deg);filter:blur(10px)}
+}
+.msDeleteTrashGhost{animation:msDeleteGhostTrash .76s cubic-bezier(.25,.7,.25,1) forwards!important}
+.msDeleteExplodeGhost{animation:msDeleteGhostExplode .68s cubic-bezier(.2,.75,.25,1) forwards!important}
+.msDeleteBinFX{position:fixed;z-index:2147483001;font-size:34px;pointer-events:none;animation:msBinPop .76s cubic-bezier(.2,.9,.2,1) forwards}
+@keyframes msBinPop{0%{opacity:0;transform:scale(.3) rotate(-12deg)}28%{opacity:1;transform:scale(1.15) rotate(5deg)}100%{opacity:0;transform:scale(.9) rotate(0)}}
+</style>
 <script id="msV10FeaturesJS">
 (()=>{
   const q=id=>document.getElementById(id);
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-  function playDelete(el){if(!el)return;const cls=Math.random()<.5?'msDeleteExplode':'msDeleteTrash';el.classList.remove('msDeleteExplode','msDeleteTrash');void el.offsetWidth;el.classList.add(cls);return sleep(cls==='msDeleteExplode'?620:700)}
+  function playDelete(el){
+    if(!el)return Promise.resolve();
+    const trash=Math.random()<.5;
+    const rect=el.getBoundingClientRect();
+    const ghost=el.cloneNode(true);
+    ghost.classList.remove('msDeleteExplode','msDeleteTrash','v11-delete-explode','v11-delete-trash');
+    ghost.classList.add('msDeleteGhost', trash?'msDeleteTrashGhost':'msDeleteExplodeGhost');
+    ghost.style.position='fixed';
+    ghost.style.left=rect.left+'px';
+    ghost.style.top=rect.top+'px';
+    ghost.style.width=rect.width+'px';
+    ghost.style.height=rect.height+'px';
+    ghost.style.margin='0';
+    ghost.style.zIndex='2147483000';
+    ghost.style.pointerEvents='none';
+    document.body.appendChild(ghost);
+    if(trash){
+      const bin=document.createElement('div');
+      bin.className='msDeleteBinFX';
+      bin.textContent='🗑️';
+      bin.style.left=Math.max(8,Math.min(window.innerWidth-60,rect.left+rect.width*.72))+'px';
+      bin.style.top=Math.max(8,Math.min(window.innerHeight-60,rect.top+rect.height+55))+'px';
+      document.body.appendChild(bin);
+      setTimeout(()=>bin.remove(),760);
+    }
+    const duration=trash?760:680;
+    return sleep(duration).then(()=>{ghost.remove()});
+  }
   function flash(el,cls){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),850)}
 
   /* 1 — deleted messages disappear completely in normal chats. */
@@ -1641,32 +1683,18 @@ ensureSavedButton();ensureSavedChatPanel();
   /* 11 — report history now shows real images/voices and marks deleted messages. */
   const oldReportHistory=window.openReportHistory;
   window.openReportHistory=async function(id){
-    if(typeof oldReportHistory!=='function')return;
-    await oldReportHistory.apply(this,arguments);
-    const box=q('reportHistoryList');if(!box)return;
-    const items=box.querySelectorAll('.report-history-item');
-    /* Re-fetch the history so we have the exact message objects and can render media. */
+    closePopup('reportsPopup'); openPopup('reportHistoryPopup');
+    const box=q('reportHistoryList'); if(!box)return;
+    box.innerHTML='<div class="msg-loading"><span class="miniSpinner"></span>در حال دریافت گفتگو...</div>';
     try{
-      const d=await (await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(id)}`,{cache:'no-store'})).json();
-      if(!d.success)return;
-      box.innerHTML='';
-      for(const m of (d.messages||[])){
-        const c=document.createElement('div');c.className='report-history-item '+(m.sender===currentUsername?'mine':'theirs');
-        const s=document.createElement('div');s.className='report-history-sender';s.textContent=userMap.get(m.sender)?.display_name||m.sender||'کاربر';c.appendChild(s);
-        if(m.deleted){
-          const body=document.createElement('div');body.className='report-history-deleted';body.textContent='این پیام حذف شده است';
-          const badge=document.createElement('span');badge.className='reportDeletedBadge';badge.textContent='حذف شده';c.append(body,badge);
-        }else if(m.message_type==='image'){
-          const img=document.createElement('img');img.className='report-history-media';img.alt='عکس گزارش‌شده';img.loading='lazy';img.src=messageFileUrl(m.id,false);img.onclick=()=>openImageViewer(m.id,img.src);c.appendChild(img);
-        }else if(m.message_type==='audio'){
-          const a=document.createElement('audio');a.className='report-history-audio';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a);
-        }else{
-          const body=document.createElement('div');body.className='report-history-text';body.textContent=m.message_type==='sticker'?(m.message||'🙂'):(m.message||'');c.appendChild(body);
-        }
-        const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c);
-      }
-      box.scrollTop=box.scrollHeight;
-    }catch(e){console.error('report history media render',e)}
+      const r=await fetch(`/api/admin/report-history?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}&message_id=${encodeURIComponent(id)}`,{cache:'no-store'});
+      const d=await r.json();
+      if(!r.ok || !d.success){box.textContent=d.message||'دریافت گفتگو ناموفق بود.';return}
+      window.renderReportHistoryV11?.(d.messages||[]);
+    }catch(e){
+      console.error('report history',e);
+      box.textContent='دریافت گفتگو ناموفق بود.';
+    }
   };
 
   /* 12/13 — phone layout + keyboard stability. */
@@ -1725,12 +1753,9 @@ ensureSavedButton();ensureSavedChatPanel();
    if(!head)return;
    const sender=m.sender;
    const u=currentUser(sender);
-   const isMine=sender===currentUsername;
-   const senderAvatar=isMine?(currentAvatar||''):(u?.avatar||'');
-   const senderName=isMine?(currentDisplayName||currentUsername):(u?.display_name||sender);
    const wrap=document.createElement('div');wrap.className='groupMessageHead';
    const av=document.createElement('img');av.className='groupMessageAvatar';av.alt='';
-   setAvatar(av,senderAvatar,senderName,userAvatarUrl(sender));
+   setAvatar(av,u?.avatar,u?.display_name||sender,userAvatarUrl(sender));
    av.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
    const name=document.createElement('span');name.className='groupMessageSender';name.textContent=mine?'من':(u?.display_name||sender);
    name.onclick=e=>{e.stopPropagation();window.openPublicProfile(sender)};
@@ -1776,8 +1801,8 @@ ensureSavedButton();ensureSavedChatPanel();
      const c=document.createElement('div');const mine=m.sender===currentUsername;c.className='report-history-item '+(mine?'mine':'theirs');
      const s=document.createElement('div');s.className='report-history-sender';s.textContent=currentUser(m.sender)?.display_name||m.sender||'کاربر';c.appendChild(s);
      if(m.deleted){c.classList.add('report-deleted');const badge=document.createElement('span');badge.className='report-deleted-badge';badge.textContent='حذف شده';c.appendChild(badge);const sp=document.createElement('div');sp.className='report-deleted-space';c.appendChild(sp)}
-     else if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.src=messageFileUrl(m.id,false);img.alt='تصویر گزارش‌شده';img.loading='lazy';c.appendChild(img)}
-     else if(m.message_type==='audio'&&m.audio){const a=document.createElement('audio');a.className='report-history-media';a.controls=true;a.preload='metadata';a.src=messageFileUrl(m.id,false);c.appendChild(a)}
+     else if(m.message_type==='image'&&m.media){const img=document.createElement('img');img.className='report-history-media';img.src=m.media||messageFileUrl(m.id,false);img.alt='تصویر گزارش‌شده';img.loading='lazy';c.appendChild(img)}
+     else if(m.message_type==='audio'&&m.audio){const a=document.createElement('audio');a.className='report-history-media';a.controls=true;a.preload='metadata';a.src=m.audio||messageFileUrl(m.id,false);c.appendChild(a)}
      else {const body=document.createElement('div');body.className='report-history-text';body.textContent=uiPreview(m);c.appendChild(body)}
      const meta=document.createElement('div');meta.className='report-history-meta';meta.textContent=formatDate(m.created_at);c.appendChild(meta);box.appendChild(c)
    }
@@ -1786,30 +1811,5 @@ ensureSavedButton();ensureSavedChatPanel();
 })();
 </script>
 
-
-<style id="msV12GroupAvatarFix">
-.groupMessageAvatar{width:30px!important;height:30px!important;min-width:30px!important;display:block!important}
-</style>
-<script id="msV12GroupAvatarJS">
-(()=>{
-  const q=id=>document.getElementById(id);
-  const currentUserV12=u=>userMap?.get?.(u)||usersCache?.find?.(x=>x.username===u)||null;
-  const base=window.renderMessageElement;
-  if(!base)return;
-  window.renderMessageElement=function(el,m,mine){
-    base(el,m,mine);
-    if(!m?.group_id)return;
-    const head=el.querySelector('.groupMessageHead');
-    if(!head)return;
-    const av=head.querySelector('.groupMessageAvatar');
-    if(!av)return;
-    const u=currentUserV12(m.sender);
-    const isMine=m.sender===currentUsername;
-    const name=isMine?(currentDisplayName||currentUsername):(u?.display_name||m.sender);
-    const avatar=isMine?(currentAvatar||''):(u?.avatar||'');
-    setAvatar(av,avatar,name,userAvatarUrl(m.sender));
-  };
-})();
-</script>
 </body>
 </html>

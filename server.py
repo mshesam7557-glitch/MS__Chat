@@ -3357,7 +3357,7 @@ async def api_admin_report_history(username: str, token: str, message_id: int = 
     try:
         with get_db() as c:
             with c.cursor() as cur:
-                if report_id is not None:
+                if report_id is not None and str(report_id).strip():
                     cur.execute('SELECT message_id FROM message_reports WHERE id=%s', (int(report_id),))
                     rr = cur.fetchone()
                     if not rr:
@@ -3365,20 +3365,26 @@ async def api_admin_report_history(username: str, token: str, message_id: int = 
                     message_id = rr['message_id']
                 if message_id is None:
                     return {'success': False, 'messages': [], 'message': 'شناسه پیام گزارش‌شده نامعتبر است.'}
-                cur.execute('SELECT id,sender,receiver,message,audio,media,status,message_type,reply_to,edited,deleted,group_id,created_at,forwarded_from_username,forwarded_from_name,forwarded_from_message_id FROM messages WHERE id=%s', (int(message_id),))
+                cols = 'id,sender,receiver,message,audio,media,status,message_type,reply_to,edited,deleted,group_id,created_at'
+                cur.execute(f'SELECT {cols} FROM messages WHERE id=%s', (int(message_id),))
                 target = cur.fetchone()
                 if not target:
                     return {'success': False, 'messages': [], 'message': 'پیام گزارش‌شده پیدا نشد.'}
                 if target['group_id'] is not None:
-                    cur.execute('SELECT id,sender,receiver,message,audio,media,status,message_type,reply_to,edited,deleted,group_id,created_at,forwarded_from_username,forwarded_from_name,forwarded_from_message_id FROM messages WHERE group_id=%s ORDER BY id ASC LIMIT %s', (target['group_id'], MAX_HISTORY_MESSAGES))
-                    kind='group'; group_id=target['group_id']; other=None
+                    cur.execute(f'SELECT {cols} FROM messages WHERE group_id=%s ORDER BY id ASC LIMIT %s', (target['group_id'], MAX_HISTORY_MESSAGES))
+                    kind, group_id, other = 'group', target['group_id'], None
                 else:
-                    cur.execute('SELECT id,sender,receiver,message,audio,media,status,message_type,reply_to,edited,deleted,group_id,created_at,forwarded_from_username,forwarded_from_name,forwarded_from_message_id FROM messages WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id ASC LIMIT %s', (target['sender'],target['receiver'],target['receiver'],target['sender'],MAX_HISTORY_MESSAGES))
-                    kind='user'; group_id=None; other=target['receiver'] if target['sender']==username else target['sender']
-                rows=cur.fetchall()
+                    a, b = target['sender'], target['receiver']
+                    cur.execute(f'''SELECT {cols} FROM messages WHERE group_id IS NULL AND ((sender=%s AND receiver=%s) OR (sender=%s AND receiver=%s)) ORDER BY id ASC LIMIT %s''', (a,b,b,a,MAX_HISTORY_MESSAGES))
+                    kind, group_id = 'user', None
+                    other = b if a == username else a
+                rows = cur.fetchall()
         messages=[]
         for r in rows:
-            messages.append({'id':r['id'],'sender':r['sender'],'receiver':r['receiver'],'message':r['message'] or '','audio':r['audio'] or None,'media':r['media'] or None,'status':r['status'] or 'sent','message_type':r['message_type'] or 'text','reply_to':r['reply_to'],'edited':bool(r['edited']),'deleted':bool(r['deleted']),'group_id':r['group_id'],'created_at':now_iso(r['created_at']),'forwarded_from_username':r.get('forwarded_from_username'),'forwarded_from_name':r.get('forwarded_from_name') or r.get('forwarded_from_username'),'forwarded_from_message_id':r.get('forwarded_from_message_id')})
+            messages.append({'id':r['id'],'sender':r['sender'],'receiver':r['receiver'],'message':r['message'] or '',
+                             'audio':r['audio'] or None,'media':r['media'] or None,'status':r['status'] or 'sent',
+                             'message_type':r['message_type'] or 'text','reply_to':r['reply_to'],'edited':bool(r['edited']),
+                             'deleted':bool(r['deleted']),'group_id':r['group_id'],'created_at':now_iso(r['created_at'])})
         return {'success':True,'report_id':report_id,'reported_message_id':int(message_id),'kind':kind,'group_id':group_id,'user':other,'messages':messages}
     except Exception as error:
         print('Admin report history error:',repr(error))

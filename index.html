@@ -9,12 +9,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="MS Chat">
 <link rel="manifest" href="/manifest.webmanifest">
-<link rel="apple-touch-icon" href="/background.png">
+<link rel="apple-touch-icon" href="/background.webp">
 <title>MS__Chat</title>
 <style>
 @import url("https://fonts.googleapis.com/css2?family=Lalezar&family=Estedad:wght@300;400;500;600;700&family=Vazirmatn:wght@300;400;500;600;700&family=Markazi+Text:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap");
 *{box-sizing:border-box}html,body{margin:0;width:100%;min-height:100%;font-family:Arial,Tahoma,sans-serif}
-body{min-height:100vh;background:linear-gradient(rgba(6,14,50,.28),rgba(18,8,60,.3)),url("background.png") center/cover;color:#111}
+body{min-height:100vh;background:linear-gradient(rgba(6,14,50,.28),rgba(18,8,60,.3)),url("background.webp") center/cover;color:#111}
 button,input{font:inherit}button{cursor:pointer}
 .hidden{display:none!important}.glass{background:rgba(255,255,255,.82)}
 #login{width:calc(100% - 30px);max-width:430px;margin:70px auto;padding:30px;border-radius:22px;background:rgba(255,255,255,.94);box-shadow:0 12px 28px rgba(0,0,0,.18);text-align:center}
@@ -439,7 +439,7 @@ if(rememberedAtLoad){setTimeout(()=>autoLoginRemembered(),120)}
 
 function notify(title,body){
  if(pushEnabled)return;
- if("Notification"in window && document.visibilityState!=="visible" && Notification.permission==="granted")new Notification(title,{body,icon:"/background.png"});
+ if("Notification"in window && document.visibilityState!=="visible" && Notification.permission==="granted")new Notification(title,{body,icon:"/background.webp"});
 }
 async function requestNotifications(){
  if("Notification"in window)return Notification.permission;
@@ -1398,14 +1398,14 @@ ensureSavedButton();ensureSavedChatPanel();
 <script id="mschat-theme-system-js">
 (function(){
   const THEMES={
-    default:'/background.png',
-    neon:'/theme_neon.jpg',
-    forest:'/theme_forest.jpg',
-    sunset:'/theme_sunset.jpg',
-    ocean:'/theme_ocean.jpg',
-    galaxy:'/theme_galaxy.jpg',
-    city:'/theme_city.jpg',
-    winter:'/theme_winter.jpg'
+    default:'/background.webp',
+    neon:'/theme_neon.webp',
+    forest:'/theme_forest.webp',
+    sunset:'/theme_sunset.webp',
+    ocean:'/theme_ocean.webp',
+    galaxy:'/theme_galaxy.webp',
+    city:'/theme_city.webp',
+    winter:'/theme_winter.webp'
   };
   const NAMES={default:'🌙 پیش‌فرض MS__Chat',neon:'⚡ نئون',forest:'🌲 جنگلی',sunset:'🌅 غروب',ocean:'🌊 اقیانوس',galaxy:'🌌 کهکشان',city:'🏙️ شهر شب',winter:'❄️ زمستان'};
   const FONTS={

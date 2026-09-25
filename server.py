@@ -65,11 +65,6 @@ OWNER_USERNAME = "MS__Hesam"
 connections = {}
 connection_kinds = {}
 
-# In-memory WebRTC group-call registry. It is intentionally ephemeral;
-# the chat/database remain the source of truth for users and groups.
-GROUP_CALL_MAX_PARTICIPANTS = 10
-group_calls = {}  # call_id -> {group_id, host, mode, participants:set, created_at}
-
 VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
 VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
 VAPID_CLAIMS_EMAIL = os.getenv("VAPID_CLAIMS_EMAIL", "mailto:admin@example.com")
@@ -1695,20 +1690,23 @@ def _normalize_ice_servers(value):
 
 
 def get_rtc_ice_servers():
-    # Always keep free STUN servers first. If TURN credentials are configured in
-    # Render, append them so WebRTC can relay media when direct P2P is blocked by NAT.
+    # Always keep public STUN first. TURN is appended only when all credentials are present.
     servers = [
         {"urls": "stun:stun.cloudflare.com:3478"},
         {"urls": "stun:stun.l.google.com:19302"},
     ]
 
-    if TURN_URLS and TURN_USERNAME and TURN_CREDENTIAL:
-        # TURN_URLS is already normalized to a list when it is read from the
-        # environment at startup. The previous implementation called .split()
-        # on that list, which made /api/rtc-config fail with 500 whenever TURN
-        # credentials were configured.
+    raw_urls = TURN_URLS
+    if isinstance(raw_urls, str):
+        urls = [u.strip() for u in raw_urls.split(",") if u.strip()]
+    elif isinstance(raw_urls, (list, tuple)):
+        urls = [str(u).strip() for u in raw_urls if str(u).strip()]
+    else:
+        urls = []
+
+    if urls and TURN_USERNAME and TURN_CREDENTIAL:
         servers.append({
-            "urls": TURN_URLS,
+            "urls": urls,
             "username": TURN_USERNAME,
             "credential": TURN_CREDENTIAL,
         })
@@ -1862,60 +1860,6 @@ async def notify_message_delete(msg):
 
 async def send_call_signal(receiver, data):
     return await send_to(receiver, data)
-
-
-async def _group_call_members_for_user(group_id, username):
-    return await asyncio.to_thread(is_group_member, group_id, username)
-
-
-def _group_call_snapshot(call_id, call):
-    return {
-        "call_id": call_id,
-        "group_id": int(call["group_id"]),
-        "host": call["host"],
-        "mode": call["mode"],
-        "participants": sorted(call["participants"]),
-    }
-
-
-async def _end_group_call(call_id, reason="ended", notify=True):
-    call = group_calls.pop(call_id, None)
-    if not call:
-        return
-    if notify:
-        for member in list(call["participants"]):
-            await send_to(member, {
-                "type": "group-call-ended",
-                "call_id": call_id,
-                "group_id": call["group_id"],
-                "reason": reason,
-            })
-
-
-async def _remove_user_from_group_calls(username):
-    # Called only after the user's last WebSocket closes, so another tab/device
-    # does not accidentally terminate the user's active call state.
-    for call_id, call in list(group_calls.items()):
-        if username not in call["participants"]:
-            continue
-        call["participants"].discard(username)
-        for member in list(call["participants"]):
-            await send_to(member, {
-                "type": "group-call-peer-left",
-                "call_id": call_id,
-                "group_id": call["group_id"],
-                "peer": username,
-            })
-        if not call["participants"]:
-            group_calls.pop(call_id, None)
-        elif call["host"] == username:
-            call["host"] = sorted(call["participants"])[0]
-            await send_to(call["host"], {
-                "type": "group-call-host-changed",
-                "call_id": call_id,
-                "group_id": call["group_id"],
-                "host": call["host"],
-            })
 
 
 @app.post("/create-group")
@@ -2606,110 +2550,6 @@ async def chat(websocket: WebSocket, username: str, token: str):
                 await deliver_message(msg)
                 continue
 
-            if action == "group-call-start":
-                try:
-                    gid = int(data.get("group_id"))
-                except (TypeError, ValueError):
-                    await websocket.send_json({"type": "call-error", "message": "شناسه گروه نامعتبر است."})
-                    continue
-                if not await asyncio.to_thread(is_group_member, gid, username):
-                    await websocket.send_json({"type": "call-error", "message": "شما عضو این گروه نیستید."})
-                    continue
-                active_for_group = next((cid for cid, c in group_calls.items() if c["group_id"] == gid), None)
-                if active_for_group:
-                    await websocket.send_json({"type": "call-error", "message": "این گروه در حال حاضر یک تماس فعال دارد."})
-                    continue
-                call_id = str(data.get("call_id") or uuid.uuid4())
-                mode = "video" if data.get("mode") == "video" else "audio"
-                group_calls[call_id] = {
-                    "group_id": gid,
-                    "host": username,
-                    "mode": mode,
-                    "participants": {username},
-                    "created_at": time.time(),
-                }
-                info = await asyncio.to_thread(get_group_info, gid)
-                for member in await group_recipients(gid, username):
-                    await send_to(member, {
-                        "type": "group-call-invite",
-                        "call_id": call_id,
-                        "group_id": gid,
-                        "mode": mode,
-                        "from": username,
-                        "group_name": (info or {}).get("name", "گروه"),
-                    })
-                await websocket.send_json({"type": "group-call-started", **_group_call_snapshot(call_id, group_calls[call_id])})
-                continue
-
-            if action == "group-call-join":
-                call_id = str(data.get("call_id") or "")
-                call = group_calls.get(call_id)
-                if not call:
-                    await websocket.send_json({"type": "call-error", "message": "این تماس گروهی دیگر فعال نیست."})
-                    continue
-                gid = int(call["group_id"])
-                if not await asyncio.to_thread(is_group_member, gid, username):
-                    await websocket.send_json({"type": "call-error", "message": "شما عضو این گروه نیستید."})
-                    continue
-                if username not in call["participants"]:
-                    if len(call["participants"]) >= GROUP_CALL_MAX_PARTICIPANTS:
-                        await websocket.send_json({"type": "call-error", "message": f"تعداد اعضای تماس به حداکثر {GROUP_CALL_MAX_PARTICIPANTS} نفر رسیده است."})
-                        continue
-                    call["participants"].add(username)
-                state = _group_call_snapshot(call_id, call)
-                await websocket.send_json({"type": "group-call-state", **state})
-                for member in list(call["participants"]):
-                    await send_to(member, {
-                        "type": "group-call-peer-joined",
-                        "call_id": call_id,
-                        "group_id": gid,
-                        "peer": username,
-                        "participants": state["participants"],
-                    })
-                continue
-
-            if action == "group-call-signal":
-                call_id = str(data.get("call_id") or "")
-                receiver = (data.get("to") or "").strip()
-                call = group_calls.get(call_id)
-                if not call or username not in call["participants"] or receiver not in call["participants"]:
-                    continue
-                payload = {
-                    "type": "group-call-signal",
-                    "call_id": call_id,
-                    "group_id": int(call["group_id"]),
-                    "from": username,
-                    "kind": data.get("kind"),
-                    "data": data.get("data"),
-                }
-                await send_to(receiver, payload)
-                continue
-
-            if action == "group-call-leave":
-                call_id = str(data.get("call_id") or "")
-                call = group_calls.get(call_id)
-                if not call or username not in call["participants"]:
-                    continue
-                call["participants"].discard(username)
-                for member in list(call["participants"]):
-                    await send_to(member, {
-                        "type": "group-call-peer-left",
-                        "call_id": call_id,
-                        "group_id": int(call["group_id"]),
-                        "peer": username,
-                    })
-                if not call["participants"]:
-                    group_calls.pop(call_id, None)
-                elif call["host"] == username:
-                    call["host"] = sorted(call["participants"])[0]
-                    await send_to(call["host"], {
-                        "type": "group-call-host-changed",
-                        "call_id": call_id,
-                        "group_id": int(call["group_id"]),
-                        "host": call["host"],
-                    })
-                continue
-
             if action == "call-offer":
                 receiver = (data.get("to") or "").strip()
                 call_id = data.get("call_id") or str(uuid.uuid4())
@@ -2750,7 +2590,6 @@ async def chat(websocket: WebSocket, username: str, token: str):
             connections.pop(username,None)
             connection_kinds.pop(username,None)
             mark_last_seen(username)
-            await _remove_user_from_group_calls(username)
         await broadcast_users()
     except Exception as error:
         print("WebSocket error:", error)
@@ -2760,7 +2599,6 @@ async def chat(websocket: WebSocket, username: str, token: str):
             connections.pop(username,None)
             connection_kinds.pop(username,None)
             mark_last_seen(username)
-            await _remove_user_from_group_calls(username)
         await broadcast_users()
 
 # ===== SAVED MESSAGES + FORWARDING EXTENSION =====

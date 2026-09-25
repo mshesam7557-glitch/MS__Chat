@@ -2177,7 +2177,7 @@ ensureSavedButton();ensureSavedChatPanel();
   window.createPeerConnection=function(other,mode,callId){
     const cfg=window.rtcConfig?.iceServers?.length?window.rtcConfig:msRtcConfig;
     const pc=new RTCPeerConnection({...cfg,iceCandidatePoolSize:4,iceTransportPolicy:'all'});
-    window.peerConnection=pc;
+    peerConnection=pc; window.peerConnection=pc;
     pc.__msMode=mode; pc.__msPeer=other; pc.__msCallId=callId;
     pc.onicecandidate=e=>{ const c=safeCandidate(e.candidate); if(c) sendWs({action:'ice-candidate',to:other,candidate:c,call_id:callId}); };
     pc.ontrack=e=>{
@@ -2226,7 +2226,7 @@ ensureSavedButton();ensureSavedChatPanel();
       const desc=normalizeSessionDescription(peerConnection.localDescription); if(!desc)throw new Error('Offer SDP is empty');
       sendWs({action:'call-offer',to:selectedUser,offer:desc,mode,call_id:activeCallId}); showHangup();
       callTimer=setTimeout(()=>{if(activeCallId){sendWs({action:'call-ended',to:selectedUser,call_id:activeCallId});alert('⏱️ تماس در زمان تعیین‌شده برقرار نشد.');endCall();}},40000);
-    }catch(e){console.error('startCall',e);alert('شروع تماس ناموفق بود. دسترسی میکروفون/دوربین و اتصال اینترنت را بررسی کن.');endCall();}
+    }catch(e){console.error('startCall',e);const reason=e?.name?`${e.name}${e.message?': '+e.message:''}`:(e?.message||String(e));alert('شروع تماس ناموفق بود.\nجزئیات: '+reason);endCall();}
   };
   window.acceptCall=async function(){
     const caller=incomingCaller, offer=incomingOffer, mode=incomingMode, cid=incomingCallId||activeCallId||newCallId();
@@ -2245,7 +2245,7 @@ ensureSavedButton();ensureSavedChatPanel();
       sendWs({action:'call-answer',to:caller,answer:desc,call_id:cid}); showHangup();
       callTimer=setTimeout(()=>{if(activeCallId){alert('⏱️ تماس در زمان تعیین‌شده برقرار نشد.');endCall();}},40000);
       incomingCaller='';incomingOffer=null;incomingCallId='';
-    }catch(e){console.error('acceptCall',e);alert('پذیرش تماس ناموفق بود: '+(e?.message||e));if(caller)sendWs({action:'call-rejected',to:caller,call_id:cid});endCall();}
+    }catch(e){console.error('acceptCall',e);const reason=e?.name?`${e.name}${e.message?': '+e.message:''}`:(e?.message||String(e));alert('پذیرش تماس ناموفق بود.\nجزئیات: '+reason);if(caller)sendWs({action:'call-rejected',to:caller,call_id:cid});endCall();}
   };
   window.hangUp=function(){if(selectedUser&&activeCallId)sendWs({action:'call-ended',to:selectedUser,call_id:activeCallId});window.endCall?.();};
   window.endCall=function(){clearCallTimer?.();if(peerConnection){try{peerConnection.onconnectionstatechange=null;peerConnection.close()}catch{}};peerConnection=null;reset1to1Media();pendingCandidates=[];activeCallId='';callInitiator=false;try{qs('callButton').style.display='inline-block';qs('videoButton').style.display='inline-block';qs('hangupButton').style.display='none';syncCallButtons();}catch{}};

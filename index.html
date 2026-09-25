@@ -251,23 +251,47 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 </style>
 
 
-<style id="msGroupCallFixV1">
-#msGroupCallOverlay{display:none;position:fixed;inset:0;z-index:4200;background:rgba(3,7,22,.92);padding:14px;align-items:center;justify-content:center}
-#msGroupCallOverlay.show{display:flex}
-.msGroupCallCard{width:min(1100px,100%);height:min(820px,96vh);background:#0b1226;color:#fff;border-radius:20px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.38)}
-.msGroupCallTop{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.08)}
-.msGroupMediaGrid{flex:1;min-height:0;padding:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;overflow:auto}
-.msGroupPeerCard{position:relative;min-height:150px;background:#050912;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center}
-.msGroupPeerCard video{width:100%;height:100%;object-fit:cover;background:#000}
-.msGroupPeerCard audio{display:none}
-.msGroupPeerName{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.56);padding:5px 8px;border-radius:999px;font-size:11px}
-.msGroupAvatarFallback{font-size:48px;opacity:.85}
-.msGroupCallControls{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;padding:10px;background:rgba(255,255,255,.06);border-top:1px solid rgba(255,255,255,.08)}
-.msGroupCallControls button{border:0;border-radius:10px;padding:10px 14px;background:#eef1ff;color:#111;cursor:pointer}
-.msGroupCallControls .danger{background:#ffdede}
-@media(max-width:760px){#msGroupCallOverlay{padding:0}.msGroupCallCard{height:100vh;border-radius:0}.msGroupMediaGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:7px}.msGroupPeerCard{min-height:150px}.msGroupCallControls{padding-bottom:max(10px,env(safe-area-inset-bottom))}.msGroupCallControls button{padding:9px 11px;font-size:12px}}
+<style id="msMobileV4">
+@media (max-width:760px){
+  html,body{width:100%;height:100%;min-height:100%;overflow:hidden}
+  #chat{width:100vw!important;height:100dvh!important;min-height:0!important;margin:0!important;border-radius:0!important;overflow:hidden!important;display:flex!important;position:relative}
+  #sidebar{display:flex;width:100%!important;min-width:0!important;height:100%!important;padding:12px!important;flex-direction:column;overflow:hidden!important;border-radius:0!important}
+  #chatArea{display:none;width:100%!important;height:100%!important;min-width:0!important;border-radius:0!important}
+  #chat.mobile-chat-open #sidebar{display:none!important}
+  #chat.mobile-chat-open #chatArea{display:flex!important}
+  #myBox{padding:6px 2px 10px;margin-bottom:4px}
+  #sidebar .sideBtn{flex:none;min-height:42px;font-size:13px;margin:3px 0;padding:10px 12px}
+  #userSearch{flex:none;width:100%;margin:4px 0 6px!important;padding:11px 12px!important;border-radius:12px!important}
+  #searchResults,#users,#groups{min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+  #users{flex:1}
+  #groups{max-height:34vh}
+  #groupsHeader{flex:none}
+  .userItem,.groupItem{min-height:56px;padding:9px!important;margin:5px 0!important}
+  .itemName{font-size:14px!important}
+  .itemStatus{font-size:10px!important}
+  #chatHeader{min-height:62px!important;height:62px!important;padding:7px 8px!important;gap:7px!important;flex:none}
+  #mobileBackButton{display:grid!important;place-items:center;width:38px;height:38px;border:0;border-radius:11px;background:rgba(255,255,255,.72);font-size:21px;flex:none}
+  #chatAvatar{width:40px!important;height:40px!important}
+  .chatTitle{font-size:14px!important}
+  .chatSub{font-size:10px!important}
+  #messages{padding:12px 10px!important;overflow:auto!important;-webkit-overflow-scrolling:touch}
+  .message{max-width:88%!important;font-size:14px!important;margin:6px 0!important;border-radius:15px!important;padding:8px 10px!important}
+  .msgImage{max-width:min(76vw,300px)!important;max-height:42vh!important}
+  #replyBar{flex:none}
+  #sendArea{min-height:60px!important;height:auto!important;padding:7px!important;gap:5px!important;flex:none!important;align-items:center!important}
+  #message{min-height:42px!important;height:42px!important;font-size:14px!important;padding:9px 10px!important;border-radius:13px!important}
+  #sendArea button{min-width:40px;min-height:40px;padding:8px!important;border-radius:12px!important}
+  #recordButton{min-width:40px!important}
+  #sendButton{font-size:12px!important;min-width:51px!important}
+  .voiceTimer{display:none!important}
+  .stickerPanel{right:0;bottom:60px;width:min(94vw,360px);max-height:42vh}
+  .actionMenu{right:0;bottom:50px;min-width:205px;max-width:88vw}
+  #videoOverlay{padding:0!important}
+  .videoCard{width:100vw!important;height:100dvh!important;border-radius:0!important}
+  .localVideo{width:110px!important;height:86px!important;right:10px!important;bottom:70px!important}
+}
+@media (min-width:761px){#mobileBackButton{display:none!important}}
 </style>
-
 </head>
 <body>
 <div id="login">
@@ -393,27 +417,6 @@ input:focus,textarea:focus,select:focus{transform:translateY(-1px)}
 <video id="remoteVideo" class="remoteVideo" autoplay playsinline></video><video id="localVideo" class="localVideo" autoplay muted playsinline></video>
 <div class="videoControls"><button onclick="hangUp()">❌ پایان تماس</button></div>
 </div></div>
-
-<div id="msGroupModePopup" class="popup"><div class="popupCard" style="text-align:center">
-<h3>👥 تماس گروهی</h3><p class="muted">نوع تماس را انتخاب کن.</p>
-<button class="primary" onclick="startGroupCall('video')">📹 تماس تصویری</button>
-<button onclick="startGroupCall('audio')">📞 تماس صوتی</button>
-<button onclick="closePopup('msGroupModePopup')">انصراف</button>
-</div></div>
-<div id="msGroupIncomingPopup" class="popup"><div class="popupCard" style="text-align:center">
-<h3 id="msGroupIncomingText">تماس گروهی ورودی</h3>
-<button class="primary" onclick="acceptGroupCall()">✅ پیوستن</button>
-<button onclick="rejectGroupCall()" class="danger">❌ رد</button>
-</div></div>
-<div id="msGroupCallOverlay" class="msGroupCallOverlay"><div class="msGroupCallCard">
-<div class="msGroupCallTop"><b id="msGroupCallTitle">تماس گروهی</b><span id="msGroupCallStatus" class="muted"></span></div>
-<div id="msGroupMediaGrid" class="msGroupMediaGrid"></div>
-<div class="msGroupCallControls">
-<button type="button" id="msGroupMuteBtn" onclick="toggleGroupMute()">🎙️ بی‌صدا</button>
-<button type="button" id="msGroupCameraBtn" onclick="toggleGroupCamera()">📹 دوربین</button>
-<button type="button" class="danger" onclick="leaveGroupCall()">❌ پایان</button>
-</div></div></div>
-
 <div id="imageViewer" onclick="this.style.display='none'"><img id="fullImage" class="fullImage"></div>
 <audio id="remoteAudio" autoplay playsinline></audio>
 
@@ -429,21 +432,45 @@ let typingTimer=null,typingActive=false,typingIndicatorTimer=null;
 let peerConnection=null,localStream=null,incomingCaller="",incomingOffer=null,incomingMode="audio",pendingCandidates=[];
 let incomingCallId="",activeCallId="",callTimer=null,rtcConfig={iceServers:[{urls:"stun:stun.cloudflare.com:3478"},{urls:"stun:stun.l.google.com:19302"}]};
 let rtcConfigLoadedAt=0;
+function normalizeIceServerList(value){
+  const list=Array.isArray(value)?value:[];
+  const out=[];
+  for(const item of list){
+    if(!item || typeof item!=="object")continue;
+    let urls=item.urls;
+    if(typeof urls==="string") urls=urls.trim();
+    if(Array.isArray(urls)) urls=urls.filter(x=>typeof x==="string"&&x.trim()).map(x=>x.trim());
+    if(!urls || (Array.isArray(urls)&&!urls.length)) continue;
+    const clean={urls};
+    if(item.username!=null)clean.username=String(item.username);
+    if(item.credential!=null)clean.credential=String(item.credential);
+    out.push(clean);
+  }
+  return out;
+}
 async function loadRtcConfig(force=false){
- // Calling the Render API here was making calls wait on a slow/blocked request.
- // For the no-TURN setup, use the known public STUN servers immediately.
- // Optionally refresh from the server, but NEVER block call setup on it.
+ // Always have a tiny built-in STUN fallback; never let the Render API block call setup.
  if(!force && Date.now()-rtcConfigLoadedAt<240000)return rtcConfig;
+ const fallback={iceServers:[
+   {urls:"stun:stun.cloudflare.com:3478"},
+   {urls:"stun:stun.l.google.com:19302"}
+ ]};
  const controller=new AbortController();
- const timer=setTimeout(()=>controller.abort(),1800);
+ const timer=setTimeout(()=>controller.abort(),1400);
  try{
    const r=await fetch(`/api/rtc-config?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store',signal:controller.signal});
    if(r.ok){
      const d=await r.json();
-     if(d.success&&Array.isArray(d.ice_servers)&&d.ice_servers.length)rtcConfig={iceServers:d.ice_servers};
+     const list=normalizeIceServerList(d?.ice_servers);
+     if(d?.success&&list.length)rtcConfig={iceServers:list};
+     else if(!rtcConfig?.iceServers?.length)rtcConfig=fallback;
    }
- }catch(e){console.warn('RTC config unavailable; using built-in STUN:',e?.name||e)}
- finally{clearTimeout(timer);rtcConfigLoadedAt=Date.now()}
+ }catch(e){
+   console.warn('RTC config unavailable; using built-in STUN:',e?.name||e,e?.message||'');
+   if(!rtcConfig?.iceServers?.length)rtcConfig=fallback;
+ }finally{clearTimeout(timer);rtcConfigLoadedAt=Date.now()}
+ const safe=normalizeIceServerList(rtcConfig?.iceServers);
+ rtcConfig={iceServers:safe.length?safe:fallback.iceServers};
  return rtcConfig;
 }
 function normalizeSessionDescription(desc){
@@ -729,42 +756,6 @@ async function handleSocket(d){
    showGroupReaders(d.message_id,d.readers||[]);
    return;
  }
-
- if(d.type==="group-call-invite"){
-   msGroupIncoming={callId:d.call_id,groupId:d.group_id,mode:d.mode||"audio",from:d.from,groupName:d.group_name||"گروه"};
-   qs("msGroupIncomingText").textContent=`${msGroupIncoming.from} شما را به تماس گروهی «${msGroupIncoming.groupName}» دعوت می‌کند`;
-   openPopup("msGroupIncomingPopup"); return;
- }
- if(d.type==="group-call-started"){
-   beginGroupCallUi(d); return;
- }
- if(d.type==="group-call-state"){
-   beginGroupCallUi(d);
-   for(const p of (d.participants||[])){ if(p!==currentUsername) ensureGroupPeer(p,d.mode||msGroupCall.mode,true); }
-   return;
- }
- if(d.type==="group-call-peer-joined"){
-   if(!msGroupCall || msGroupCall.callId!==d.call_id) return;
-   const p=d.peer; if(p===currentUsername)return;
-   if(Array.isArray(d.participants)) msGroupCall.participants=new Set(d.participants);
-   ensureGroupPeer(p,msGroupCall.mode,currentUsername.localeCompare(p)<0); return;
- }
- if(d.type==="group-call-signal"){
-   handleGroupSignal(d); return;
- }
- if(d.type==="group-call-peer-left"){
-   if(!msGroupCall || msGroupCall.callId!==d.call_id)return;
-   removeGroupPeer(d.peer); return;
- }
- if(d.type==="group-call-host-changed"){
-   if(msGroupCall && msGroupCall.callId===d.call_id) msGroupCall.host=d.host;
-   return;
- }
- if(d.type==="group-call-ended"){
-   if(!msGroupCall || msGroupCall.callId!==d.call_id)return;
-   endGroupCallLocal(); return;
- }
-
  if(d.type==="call-offer"){
    incomingCaller=d.from;incomingOffer=d.offer;incomingMode=d.mode||"audio";incomingCallId=d.call_id||newCallId();pendingCandidates=[];
    activeCallId=incomingCallId;
@@ -1189,7 +1180,19 @@ async function deleteGroup(){
 }
 
 function createPeerConnection(other,mode,callId){
-  peerConnection=new RTCPeerConnection({...rtcConfig,iceCandidatePoolSize:4});
+  const safeServers=normalizeIceServerList(rtcConfig?.iceServers);
+  const config={iceServers:safeServers,iceCandidatePoolSize:4};
+  try{
+    peerConnection=new RTCPeerConnection(config);
+  }catch(primaryError){
+    console.warn("RTCPeerConnection config rejected; retrying without ICE servers",primaryError);
+    try{peerConnection=new RTCPeerConnection({iceCandidatePoolSize:0});}
+    catch(retryError){
+      const e=new Error(`مرورگر نتوانست WebRTC را فعال کند: ${retryError?.message||retryError}`);
+      e.code="RTCPeerConnectionInitFailed";
+      throw e;
+    }
+  }
   peerConnection.onicecandidate=e=>{
     if(!e.candidate)return;
     console.log("ICE candidate gathered:",e.candidate.type||"unknown",e.candidate.protocol||"");
@@ -1206,8 +1209,10 @@ function createPeerConnection(other,mode,callId){
   peerConnection.onicegatheringstatechange=()=>console.log("ICE gathering:",peerConnection?.iceGatheringState);
   peerConnection.oniceconnectionstatechange=()=>{
     const s=peerConnection?.iceConnectionState;console.log("ICE state:",s);
-    if(s==="failed"){qs("chatSub").textContent="🔴 اتصال تماس ناموفق بود";console.error("ICE connection failed",{callId:activeCallId,config:rtcConfig});}
-    else if(s==="disconnected")qs("chatSub").textContent="🟠 اتصال تماس ناپایدار...";
+    if(s==="failed"){
+      qs("chatSub").textContent="🔴 اتصال تماس ناموفق بود";
+      console.error("ICE connection failed",{callId:activeCallId,config:rtcConfig});
+    }else if(s==="disconnected")qs("chatSub").textContent="🟠 اتصال تماس ناپایدار...";
     else if(s==="connected"||s==="completed"){clearCallTimer();qs("chatSub").textContent="🟢 تماس برقرار شد";}
   };
   peerConnection.onconnectionstatechange=()=>{
@@ -1229,41 +1234,91 @@ function waitForIceGathering(pc,timeoutMs=10000){
   });
 }
 let callInitiator=false;
+function callErrorMessage(stage,error,mode){
+  const name=error?.name||error?.code||"Error";
+  const msg=String(error?.message||error||"").trim();
+  if(stage==="secure")return "برای تماس، سایت باید با HTTPS باز شده باشد.";
+  if(stage==="media"){
+    if(name==="NotAllowedError"||name==="PermissionDeniedError")return mode==="video"?"دسترسی دوربین یا میکروفون توسط مرورگر/سیستم رد شده است.":"دسترسی میکروفون توسط مرورگر/سیستم رد شده است.";
+    if(name==="NotFoundError"||name==="DevicesNotFoundError")return mode==="video"?"دوربین یا میکروفون روی این دستگاه پیدا نشد.":"میکروفون روی این دستگاه پیدا نشد.";
+    if(name==="NotReadableError"||name==="TrackStartError")return "میکروفون یا دوربین در اختیار برنامه دیگری است یا سیستم اجازه استفاده از آن را نمی‌دهد.";
+    if(name==="OverconstrainedError")return "تنظیمات دوربین/میکروفون این دستگاه قابل استفاده نیست.";
+  }
+  if(stage==="pc")return msg||"WebRTC در این مرورگر فعال نشد.";
+  if(stage==="offer")return msg||"ساخت اتصال تماس ناموفق بود.";
+  return msg?`${name}: ${msg}`:`خطای ${name}`;
+}
+
+async function getCallMedia(mode){
+  if(!window.isSecureContext)throw Object.assign(new Error("Insecure context"),{code:"secure"});
+  if(!navigator.mediaDevices?.getUserMedia)throw Object.assign(new Error("getUserMedia unavailable"),{code:"media_unavailable"});
+  const constraints=mode==="video"?{audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:{facingMode:"user"}}:{audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false};
+  try{return await navigator.mediaDevices.getUserMedia(constraints)}catch(first){
+    // Some browsers reject advanced audio constraints; retry with the minimal request.
+    if(mode==="audio"&&(first?.name==="OverconstrainedError"||first?.name==="TypeError"))return await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    if(mode==="video"&&first?.name==="OverconstrainedError")return await navigator.mediaDevices.getUserMedia({audio:true,video:true});
+    throw first;
+  }
+}
+
 async function startCall(mode){
   if(selectedType!=="user")return alert("تماس فقط با کاربر است.");if(!selectedUser)return;
+  let stage="config";
   try{
     await loadRtcConfig(true);
     pendingCandidates=[];incomingCaller="";incomingOffer=null;incomingCallId="";activeCallId=newCallId();callInitiator=true;
-    localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});
-    createPeerConnection(selectedUser,mode,activeCallId);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+    stage="media";
+    localStream=await getCallMedia(mode);
+    stage="pc";
+    createPeerConnection(selectedUser,mode,activeCallId);
+    localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
     if(mode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex";}
     qs("chatSub").textContent="📞 در حال تماس...";
+    stage="offer";
     const offer=await peerConnection.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:mode==="video"});
     await peerConnection.setLocalDescription(offer);
+    await waitForIceGathering(peerConnection,6000);
     const offerDescription=normalizeSessionDescription(peerConnection.localDescription);
     if(!offerDescription)throw new Error('Offer SDP is empty or invalid');
-    sendWs({action:"call-offer",to:selectedUser,offer:offerDescription,mode,call_id:activeCallId});
-    showHangup();clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۴۵ ثانیه برقرار نشد.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();},30000);
-  }catch(e){console.error("startCall error",e);alert("شروع تماس ناموفق بود. دسترسی میکروفون/دوربین و اتصال اینترنت را بررسی کن.");endCall();}
+    const delivered=sendWs({action:"call-offer",to:selectedUser,offer:offerDescription,mode,call_id:activeCallId});
+    if(!delivered)qs("chatSub").textContent="📞 در حال اتصال به سرور تماس...";
+    showHangup();clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۳۰ ثانیه برقرار نشد. اگر هر دو کاربر آنلاین هستند، تنظیمات TURN روی سرور را بررسی کن.");if(selectedUser)sendWs({action:"call-ended",to:selectedUser,call_id:activeCallId});endCall();},30000);
+  }catch(e){
+    console.error("startCall error",{stage,error:e});
+    const detail=callErrorMessage(stage,e,mode);
+    alert(`شروع تماس ناموفق بود.
+
+مرحله: ${stage}
+${detail}`);
+    endCall();
+  }
 }
 async function acceptCall(){
   closePopup("incomingPopup");selectedType="user";selectedUser=incomingCaller;
+  const caller=incomingCaller;
   const thisCallId=incomingCallId||activeCallId||newCallId();activeCallId=thisCallId;callInitiator=false;
-  const u=usersCache.find(x=>x.username===incomingCaller);if(u){setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);}
+  const u=usersCache.find(x=>x.username===caller);if(u){setHeader(u.display_name,u.avatar,userAvatarUrl(u.username),u.online?"🟢 آنلاین":u.last_seen?"آخرین بازدید: "+formatDate(u.last_seen):"⚫ آفلاین");enableComposer(true);}
+  let stage="config";
   try{
-    await loadRtcConfig(true);localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:incomingMode==="video"});
-    createPeerConnection(incomingCaller,incomingMode,thisCallId);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
+    await loadRtcConfig(true);
+    stage="media";
+    localStream=await getCallMedia(incomingMode);
+    stage="pc";
+    createPeerConnection(caller,incomingMode,thisCallId);localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
     if(incomingMode==="video"){qs("localVideo").srcObject=localStream;qs("videoOverlay").style.display="flex";}
-    const normalizedOffer=normalizeSessionDescription(incomingOffer);
-    if(!normalizedOffer)throw new Error('Received offer SDP is invalid');
-    await peerConnection.setRemoteDescription(normalizedOffer);
+    stage="answer";
+    const normalizedOffer=normalizeSessionDescription(incomingOffer);if(!normalizedOffer)throw new Error('Received offer SDP is invalid');
+    await peerConnection.setRemoteDescription(normalizedOffer);await processPendingCandidates();
     const ans=await peerConnection.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:incomingMode==="video"});
     await peerConnection.setLocalDescription(ans);
-    const answerDescription=normalizeSessionDescription(peerConnection.localDescription);
-    if(!answerDescription)throw new Error('Answer SDP is empty or invalid');
-    sendWs({action:"call-answer",to:incomingCaller,answer:answerDescription,call_id:thisCallId});
-    showHangup();incomingCaller="";incomingOffer=null;incomingCallId="";clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۴۵ ثانیه برقرار نشد.");endCall();},30000);
-  }catch(e){console.error("acceptCall error",e);alert("پذیرش تماس ناموفق بود: "+(e?.message||e));if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:thisCallId});endCall();}
+    await waitForIceGathering(peerConnection,6000);
+    const answerDescription=normalizeSessionDescription(peerConnection.localDescription);if(!answerDescription)throw new Error('Answer SDP is empty or invalid');
+    sendWs({action:"call-answer",to:caller,answer:answerDescription,call_id:thisCallId});
+    showHangup();incomingCaller="";incomingOffer=null;incomingCallId="";clearCallTimer();callTimer=setTimeout(()=>{alert("⏱️ تماس در ۳۰ ثانیه برقرار نشد. اگر هر دو کاربر آنلاین هستند، تنظیمات TURN روی سرور را بررسی کن.");endCall();},30000);
+  }catch(e){console.error("acceptCall error",{stage,error:e});alert(`پذیرش تماس ناموفق بود.
+
+مرحله: ${stage}
+${callErrorMessage(stage,e,incomingMode)}`);if(caller)sendWs({action:"call-rejected",to:caller,call_id:thisCallId});endCall();}
 }
 function rejectCall(){const cid=incomingCallId||activeCallId;if(incomingCaller)sendWs({action:"call-rejected",to:incomingCaller,call_id:cid});closePopup("incomingPopup");incomingCaller="";incomingOffer=null;incomingCallId="";activeCallId="";}
 function showHangup(){qs("callButton").style.display="none";qs("videoButton").style.display="none";qs("hangupButton").style.display="inline-block";}
@@ -2141,211 +2196,184 @@ ensureSavedButton();ensureSavedChatPanel();
 })();
 </script>
 
-<script id="msCallFixV1JS">
+<style id="msMobileV3">
+/* MS__Chat V3 — real mobile layout */
+@media (max-width:760px){
+  html,body{width:100%;height:100%;min-height:100dvh;overflow:hidden}
+  body{background-position:center}
+  #chat{width:100%;height:100dvh;min-height:0;margin:0;border-radius:0;overflow:hidden;display:flex}
+  #sidebar{width:100%;min-width:0;height:100%;padding:12px 12px calc(76px + env(safe-area-inset-bottom));overflow:auto;background:rgba(248,250,255,.96)}
+  #chatArea{display:none;width:100%;height:100%;min-width:0;background:rgba(255,255,255,.96)}
+  body.ms-mobile-chat-open #sidebar{display:none}
+  body.ms-mobile-chat-open #chatArea{display:flex}
+  #myBox{padding:7px 4px 10px;margin-bottom:2px}
+  #myAvatar{width:46px;height:46px}
+  #sidebar>.sideBtn{min-height:42px;font-size:13px;margin:3px 0}
+  #sidebar>#searchInput{min-height:44px;font-size:14px}
+  #users,#groups{padding-bottom:8px}
+  .userItem,.groupItem{min-height:58px;padding:9px 10px;margin:5px 0;border-radius:15px}
+  .itemName{font-size:14px}.itemStatus{font-size:10px}
+  #chatHeader{min-height:64px;height:auto;padding:7px 8px;gap:7px;position:relative;box-shadow:0 1px 10px rgba(0,0,0,.07);z-index:10}
+  #chatHeader .avatar{width:42px;height:42px}
+  .chatTitle{font-size:14px}.chatSub{font-size:10px}.typingIndicator{font-size:10px}
+  #messages{padding:12px 10px 10px;background:rgba(247,249,255,.62)}
+  .message{max-width:88%;padding:8px 10px;margin:6px 0;font-size:13px}
+  .msgImage{max-width:min(72vw,320px);max-height:42vh}
+  #replyBar{padding:6px 9px}
+  #sendArea{min-height:60px;padding:7px calc(7px + env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) calc(7px + env(safe-area-inset-left));gap:5px}
+  #message{min-height:42px;font-size:14px!important;padding:10px 11px;border-radius:14px}
+  #sendArea button{min-width:38px;min-height:40px;padding:8px 9px;border-radius:12px}
+  .stickerPanel{right:6px;bottom:61px;width:min(350px,calc(100vw - 18px));max-height:46vh}
+  #videoOverlay{padding:0}
+  .videoCard{width:100vw;height:100dvh;max-width:none;max-height:none;border-radius:0}
+  .localVideo{right:10px;bottom:78px;width:115px;height:86px}
+  #msMobileBack{display:grid;place-items:center;width:42px;height:42px;flex:none;border:0;border-radius:12px;background:#eef1ff;font-size:21px;cursor:pointer}
+  #msMobileNav{position:fixed;left:0;right:0;bottom:0;padding:7px 8px calc(7px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-top:1px solid #e7eaf3;z-index:1000;box-shadow:0 -5px 20px rgba(0,0,0,.07)}
+  #msMobileNav button{border:0;background:transparent;border-radius:12px;padding:7px 4px;font-size:11px;min-height:46px}
+  #msMobileNav button span{display:block;font-size:20px;line-height:21px;margin-bottom:2px}
+  body.ms-mobile-chat-open #msMobileNav{display:none}
+  #groupsHeader{margin-top:12px}
+  .themeGrid{grid-template-columns:1fr 1fr!important}
+  .popupCard{max-width:96vw;border-radius:18px}
+}
+@media(min-width:761px){#msMobileNav,#msMobileBack{display:none!important}}
+</style>
+
+<script id="msMobileV3JS">
 (()=>{
-  // ---------- 1:1 calls: more reliable ICE + Android WebView friendly media handling ----------
-  const nativeRtcServers=[
-    {urls:"stun:stun.cloudflare.com:3478"},
-    {urls:"stun:stun.l.google.com:19302"}
-  ];
-  let msRtcConfig=window.rtcConfig||{iceServers:nativeRtcServers};
-  window.loadRtcConfig=async function(force=false){
-    try{
-      if(!force && window.__msRtcLoadedAt && Date.now()-window.__msRtcLoadedAt<240000)return msRtcConfig;
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),3500);
-      const r=await fetch(`/api/rtc-config?username=${encodeURIComponent(currentUsername)}&token=${encodeURIComponent(authToken)}`,{cache:'no-store',signal:controller.signal});
-      clearTimeout(timer);
-      const d=await r.json().catch(()=>null);
-      if(d?.success && Array.isArray(d.ice_servers) && d.ice_servers.length) msRtcConfig={iceServers:d.ice_servers};
-      window.__msRtcLoadedAt=Date.now(); window.rtcConfig=msRtcConfig;
-    }catch(e){ console.warn('RTC config fallback:',e?.name||e); msRtcConfig={iceServers:nativeRtcServers}; window.rtcConfig=msRtcConfig; window.__msRtcLoadedAt=Date.now(); }
-    return msRtcConfig;
-  };
+  const $=id=>document.getElementById(id);
+  const chat=document.getElementById('chat'), sidebar=document.getElementById('sidebar'), header=document.getElementById('chatHeader');
+  if(!chat||!sidebar||!header)return;
+  const isMobile=()=>window.matchMedia('(max-width:760px)').matches;
 
-  function safeCandidate(c){
-    if(!c)return null;
-    try{ if(typeof c.toJSON==='function') return c.toJSON(); }catch{}
-    return {candidate:c.candidate,sdpMid:c.sdpMid,sdpMLineIndex:c.sdpMLineIndex,usernameFragment:c.usernameFragment};
+  function setupMobileNav(){
+    if(document.getElementById('msMobileNav'))return;
+    const nav=document.createElement('nav');nav.id='msMobileNav';
+    nav.innerHTML=`<button type="button" data-tab="users"><span>💬</span>چت‌ها</button>
+      <button type="button" data-tab="groups"><span>👥</span>گروه‌ها</button>
+      <button type="button" data-tab="profile"><span>👤</span>پروفایل</button>
+      <button type="button" data-tab="more"><span>⚙️</span>بیشتر</button>`;
+    chat.appendChild(nav);
+    nav.addEventListener('click',e=>{
+      const b=e.target.closest('button');if(!b)return;
+      const tab=b.dataset.tab;
+      if(tab==='users'){document.getElementById('searchInput')?.scrollIntoView({behavior:'smooth',block:'start'});document.getElementById('searchInput')?.focus()}
+      else if(tab==='groups'){document.getElementById('groupsHeader')?.scrollIntoView({behavior:'smooth',block:'start'})}
+      else if(tab==='profile'){window.openProfile?.()}
+      else if(tab==='more'){document.querySelector('#sidebar .sideBtn[onclick="openChangePassword()"]')?.scrollIntoView({behavior:'smooth',block:'center'})}
+    });
   }
-  function reset1to1Media(){
-    try{ if(localStream) localStream.getTracks().forEach(t=>t.stop()); }catch{}
-    localStream=null;
-    try{qs('remoteAudio').srcObject=null;qs('remoteVideo').srcObject=null;qs('localVideo').srcObject=null;}catch{}
-    try{qs('videoOverlay').style.display='none';}catch{}
+  function setupBack(){
+    if(document.getElementById('msMobileBack'))return;
+    const b=document.createElement('button');b.id='msMobileBack';b.type='button';b.title='بازگشت';b.textContent='‹';
+    header.insertBefore(b,header.firstChild);b.addEventListener('click',mobileBack);
   }
-  window.createPeerConnection=function(other,mode,callId){
-    const cfg=window.rtcConfig?.iceServers?.length?window.rtcConfig:msRtcConfig;
-    const pc=new RTCPeerConnection({...cfg,iceCandidatePoolSize:4,iceTransportPolicy:'all'});
-    peerConnection=pc; window.peerConnection=pc;
-    pc.__msMode=mode; pc.__msPeer=other; pc.__msCallId=callId;
-    pc.onicecandidate=e=>{ const c=safeCandidate(e.candidate); if(c) sendWs({action:'ice-candidate',to:other,candidate:c,call_id:callId}); };
-    pc.ontrack=e=>{
-      const stream=e.streams?.[0]; if(!stream)return;
-      if(mode==='video'){
-        const v=qs('remoteVideo');v.srcObject=stream;v.autoplay=true;v.playsInline=true;v.muted=false;v.play?.().catch(()=>{});
-      }else{
-        const a=qs('remoteAudio');a.srcObject=stream;a.autoplay=true;a.playsInline=true;a.muted=false;a.volume=1;a.play?.().catch(()=>{});
-      }
-    };
-    pc.onconnectionstatechange=()=>{
-      const s=pc.connectionState;
-      if(s==='connected'){clearCallTimer?.();qs('chatSub').textContent='🟢 تماس برقرار شد';}
-      if(s==='failed') qs('chatSub').textContent='🔴 اتصال تماس ناموفق بود';
-      if(s==='disconnected') qs('chatSub').textContent='🟠 اتصال تماس ناپایدار...';
-    };
-    pc.oniceconnectionstatechange=()=>{
-      const s=pc.iceConnectionState;
-      if(s==='connected'||s==='completed'){clearCallTimer?.();qs('chatSub').textContent='🟢 تماس برقرار شد';}
-      if(s==='failed'){
-        qs('chatSub').textContent='🔴 اتصال تماس ناموفق بود';
-        // One ICE restart gives restrictive networks a second chance without
-        // creating a second incoming-call dialog.
-        if(callInitiator && !pc.__msRestarted){
-          pc.__msRestarted=true;
-          setTimeout(async()=>{
-            try{pc.restartIce?.();const offer=await pc.createOffer({iceRestart:true});await pc.setLocalDescription(offer);const desc=normalizeSessionDescription(pc.localDescription);if(desc)sendWs({action:'call-offer',to:other,offer:desc,mode,call_id:callId});}catch(err){console.warn('ICE restart failed',err)}
-          },500);
-        }
-      }
-    };
-    pc.onicecandidateerror=e=>console.warn('ICE server error',e?.errorCode,e?.url,e?.errorText);
-    return pc;
-  };
-  window.startCall=async function(mode){
-    if(selectedType!=='user'||!selectedUser)return;
-    try{
-      await loadRtcConfig(true);
-      clearCallTimer?.(); pendingCandidates=[]; incomingCaller=''; incomingOffer=null; incomingCallId=''; activeCallId=newCallId(); callInitiator=true;
-      const needVideo=mode==='video';
-      localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:needVideo});
-      createPeerConnection(selectedUser,mode,activeCallId); localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
-      if(needVideo){qs('localVideo').srcObject=localStream;qs('localVideo').muted=true;qs('videoOverlay').style.display='flex';}
-      qs('chatSub').textContent='📞 در حال تماس...';
-      const offer=await peerConnection.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:needVideo}); await peerConnection.setLocalDescription(offer);
-      const desc=normalizeSessionDescription(peerConnection.localDescription); if(!desc)throw new Error('Offer SDP is empty');
-      sendWs({action:'call-offer',to:selectedUser,offer:desc,mode,call_id:activeCallId}); showHangup();
-      callTimer=setTimeout(()=>{if(activeCallId){sendWs({action:'call-ended',to:selectedUser,call_id:activeCallId});alert('⏱️ تماس در زمان تعیین‌شده برقرار نشد.');endCall();}},40000);
-    }catch(e){console.error('startCall',e);const reason=e?.name?`${e.name}${e.message?': '+e.message:''}`:(e?.message||String(e));alert('شروع تماس ناموفق بود.\nجزئیات: '+reason);endCall();}
-  };
-  window.acceptCall=async function(){
-    const caller=incomingCaller, offer=incomingOffer, mode=incomingMode, cid=incomingCallId||activeCallId||newCallId();
-    if(!caller||!offer){closePopup('incomingPopup');return;}
-    closePopup('incomingPopup');selectedType='user';selectedUser=caller;activeCallId=cid;callInitiator=false;
-    try{
-      await loadRtcConfig(true);
-      pendingCandidates=[];
-      localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:mode==='video'});
-      createPeerConnection(caller,mode,cid); localStream.getTracks().forEach(t=>peerConnection.addTrack(t,localStream));
-      if(mode==='video'){qs('localVideo').srcObject=localStream;qs('localVideo').muted=true;qs('videoOverlay').style.display='flex';}
-      const off=normalizeSessionDescription(offer); if(!off)throw new Error('Received offer is invalid');
-      await peerConnection.setRemoteDescription(off); await processPendingCandidates();
-      const ans=await peerConnection.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:mode==='video'}); await peerConnection.setLocalDescription(ans);
-      const desc=normalizeSessionDescription(peerConnection.localDescription); if(!desc)throw new Error('Answer SDP is empty');
-      sendWs({action:'call-answer',to:caller,answer:desc,call_id:cid}); showHangup();
-      callTimer=setTimeout(()=>{if(activeCallId){alert('⏱️ تماس در زمان تعیین‌شده برقرار نشد.');endCall();}},40000);
-      incomingCaller='';incomingOffer=null;incomingCallId='';
-    }catch(e){console.error('acceptCall',e);const reason=e?.name?`${e.name}${e.message?': '+e.message:''}`:(e?.message||String(e));alert('پذیرش تماس ناموفق بود.\nجزئیات: '+reason);if(caller)sendWs({action:'call-rejected',to:caller,call_id:cid});endCall();}
-  };
-  window.hangUp=function(){if(selectedUser&&activeCallId)sendWs({action:'call-ended',to:selectedUser,call_id:activeCallId});window.endCall?.();};
-  window.endCall=function(){clearCallTimer?.();if(peerConnection){try{peerConnection.onconnectionstatechange=null;peerConnection.close()}catch{}};peerConnection=null;reset1to1Media();pendingCandidates=[];activeCallId='';callInitiator=false;try{qs('callButton').style.display='inline-block';qs('videoButton').style.display='inline-block';qs('hangupButton').style.display='none';syncCallButtons();}catch{}};
+  function mobileBack(){
+    document.body.classList.remove('ms-mobile-chat-open');
+    if(window.stopTyping)window.stopTyping();
+  }
+  function openMobileChat(){if(isMobile())document.body.classList.add('ms-mobile-chat-open')}
+  window.msMobileBack=mobileBack;
+  setupMobileNav();setupBack();
 
-  // ---------- group calls: peer-to-peer mesh over the existing WebSocket signaling ----------
-  let msGroupIncoming=null;
-  let msGroupCall=null;
-  const mediaPeers=new Map();
-  const pendingByPeer=new Map();
-  let groupMuted=false, groupCameraOff=false;
+  const oldOpenChat=window.openChat;
+  window.openChat=function(){
+    document.body.classList.remove('ms-mobile-chat-open');
+    return oldOpenChat?.apply(this,arguments);
+  };
+  const oldSelectUser=window.selectUser;
+  if(oldSelectUser)window.selectUser=function(u){const r=oldSelectUser.apply(this,arguments);openMobileChat();return r};
+  const oldSelectGroup=window.selectGroup;
+  if(oldSelectGroup)window.selectGroup=function(g){const r=oldSelectGroup.apply(this,arguments);openMobileChat();return r};
 
-  function groupPopup(id){if(qs(id))openPopup(id)}
-  function ensureGroupPeerCard(peer,mode){
-    let card=qs('msGroupPeer-'+CSS.escape(peer));
-    if(card)return card;
-    card=document.createElement('div');card.className='msGroupPeerCard';card.id='msGroupPeer-'+peer.replace(/[^a-zA-Z0-9_-]/g,'_');
-    const media=mode==='video'?document.createElement('video'):document.createElement('audio');
-    media.id='msGroupMedia-'+peer.replace(/[^a-zA-Z0-9_-]/g,'_'); media.autoplay=true;media.playsInline=true;media.muted=false;
-    if(mode!=='video')media.setAttribute('aria-hidden','true');
-    const name=document.createElement('div');name.className='msGroupPeerName';name.textContent=peer;
-    card.append(media,name);qs('msGroupMediaGrid').appendChild(card);return card;
+  // More useful call diagnostics. The old function swallowed the real browser error.
+  const callState={active:false};
+  function friendlyMediaError(e,mode){
+    const name=e?.name||'UnknownError', msg=e?.message||'';
+    if(name==='NotAllowedError'||name==='SecurityError')return 'دسترسی میکروفون/دوربین توسط مرورگر یا تنظیمات حریم خصوصی رد شده است. در Site settings هر دو را روی Allow بگذار و صفحه را دوباره باز کن.';
+    if(name==='NotFoundError')return mode==='video'?'دوربین یا میکروفون پیدا نشد. اتصال/فعال بودن دستگاه را بررسی کن.':'میکروفون پیدا نشد یا سیستم آن را در اختیار ندارد.';
+    if(name==='NotReadableError'||name==='TrackStartError')return 'میکروفون/دوربین توسط برنامه دیگری درگیر است یا سیستم اجازه استفاده هم‌زمان نمی‌دهد.';
+    if(name==='OverconstrainedError')return 'تنظیمات دستگاه برای تماس قابل استفاده نیست.';
+    if(name==='TypeError')return 'مرورگر قابلیت MediaDevices را در این صفحه فعال نکرده است. صفحه باید HTTPS و در یک مرورگر کامل باز شود.';
+    if(name==='AbortError')return 'دریافت دسترسی رسانه قبل از شروع تماس متوقف شد.';
+    return `خطای ${name}${msg?': '+msg:''}`;
   }
-  function removeGroupPeer(peer){
-    const item=mediaPeers.get(peer);if(item){try{item.pc.close()}catch{}mediaPeers.delete(peer)} pendingByPeer.delete(peer);
-    const safeId='msGroupPeer-'+peer.replace(/[^a-zA-Z0-9_-]/g,'_');qs(safeId)?.remove();
-    updateGroupStatus();
-  }
-  function updateGroupStatus(){if(!msGroupCall)return;qs('msGroupCallStatus').textContent=`${mediaPeers.size+1} نفر`}
-  function ensureGroupPeer(peer,mode,shouldOffer){
-    if(!msGroupCall||!peer||peer===currentUsername)return null;
-    if(mediaPeers.has(peer)){
-      if(shouldOffer && !mediaPeers.get(peer).offerSent) makeGroupOffer(peer); return mediaPeers.get(peer).pc;
+  async function waitForSocket(timeout=5000){
+    if(window.socket?.readyState===WebSocket.OPEN)return true;
+    window.connectWebSocket?.();
+    const start=Date.now();
+    while(Date.now()-start<timeout){
+      if(window.socket?.readyState===WebSocket.OPEN)return true;
+      await new Promise(r=>setTimeout(r,120));
     }
-    const pc=new RTCPeerConnection({...msRtcConfig,iceCandidatePoolSize:4,iceTransportPolicy:'all'});
-    const entry={pc,offerSent:false};mediaPeers.set(peer,entry);pendingByPeer.set(peer,[]);
-    if(localStream) localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
-    pc.onicecandidate=e=>{const c=safeCandidate(e.candidate);if(c)sendWs({action:'group-call-signal',to:peer,call_id:msGroupCall.callId,kind:'ice',data:c})};
-    pc.ontrack=e=>{const stream=e.streams?.[0];if(!stream)return;const card=ensureGroupPeerCard(peer,mode);const media=card.querySelector('video,audio');media.srcObject=stream;media.autoplay=true;media.playsInline=true;media.play?.().catch(()=>{});};
-    pc.onconnectionstatechange=()=>{if(['failed','closed'].includes(pc.connectionState))removeGroupPeer(peer);updateGroupStatus()};
-    pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='failed'&&!entry.restarted){entry.restarted=true;try{pc.restartIce?.()}catch{}}};
-    ensureGroupPeerCard(peer,mode); if(shouldOffer)makeGroupOffer(peer); updateGroupStatus(); return pc;
+    return window.socket?.readyState===WebSocket.OPEN;
   }
-  async function makeGroupOffer(peer){
-    const e=mediaPeers.get(peer);if(!e||e.offerSent||!msGroupCall)return;
-    try{e.offerSent=true;const offer=await e.pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:msGroupCall.mode==='video'});await e.pc.setLocalDescription(offer);const desc=normalizeSessionDescription(e.pc.localDescription);if(desc)sendWs({action:'group-call-signal',to:peer,call_id:msGroupCall.callId,kind:'offer',data:desc});}
-    catch(err){e.offerSent=false;console.warn('group offer failed',peer,err)}
-  }
-  async function handleGroupSignal(d){
-    if(!msGroupCall||d.call_id!==msGroupCall.callId||!d.from)return;
-    const peer=d.from,mode=msGroupCall.mode;
-    let pc=ensureGroupPeer(peer,mode,false);const e=mediaPeers.get(peer);if(!pc||!e)return;
+  window.startCall=async function(mode){
+    if(typeof selectedType!=='undefined'&&selectedType!=='user')return alert('تماس فقط با کاربر است.');
+    if(typeof selectedUser==='undefined'||!selectedUser)return;
+    let stage='شروع';
     try{
-      if(d.kind==='offer'){
-        await pc.setRemoteDescription(normalizeSessionDescription(d.data));
-        const pending=pendingByPeer.get(peer)||[];for(const c of pending){try{await pc.addIceCandidate(c)}catch{}}pendingByPeer.set(peer,[]);
-        const ans=await pc.createAnswer({offerToReceiveAudio:true,offerToReceiveVideo:mode==='video'});await pc.setLocalDescription(ans);const desc=normalizeSessionDescription(pc.localDescription);if(desc)sendWs({action:'group-call-signal',to:peer,call_id:msGroupCall.callId,kind:'answer',data:desc});
-      }else if(d.kind==='answer'){
-        await pc.setRemoteDescription(normalizeSessionDescription(d.data));
-        const pending=pendingByPeer.get(peer)||[];for(const c of pending){try{await pc.addIceCandidate(c)}catch{}}pendingByPeer.set(peer,[]);
-      }else if(d.kind==='ice'){
-        if(pc.remoteDescription)await pc.addIceCandidate(d.data);else pendingByPeer.get(peer)?.push(d.data);
+      if(!window.isSecureContext && location.hostname!=='localhost'&&location.hostname!=='127.0.0.1')throw new Error('صفحه امن نیست (HTTPS).');
+      if(!navigator.mediaDevices?.getUserMedia)throw new Error('مرورگر API میکروفون/دوربین (getUserMedia) را ارائه نمی‌دهد.');
+      stage='اتصال WebSocket';
+      if(!(await waitForSocket(5000)))throw new Error('اتصال WebSocket به سرور برقرار نیست.');
+      stage='گرفتن مجوز رسانه';
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==='video'});
+      window.pendingCandidates=[];window.incomingCaller='';window.incomingOffer=null;window.incomingCallId='';window.activeCallId=window.newCallId?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`;window.callInitiator=true;
+      stage='ساخت اتصال WebRTC';
+      await window.loadRtcConfig?.(true);
+      window.localStream=stream;
+      window.createPeerConnection(selectedUser,mode,window.activeCallId);
+      stream.getTracks().forEach(t=>window.peerConnection?.addTrack(t,stream));
+      if(mode==='video'){
+        const lv=$('localVideo');if(lv)lv.srcObject=stream;
+        const ov=$('videoOverlay');if(ov)ov.style.display='flex';
       }
-    }catch(err){console.warn('group signal error',peer,d.kind,err)}
-  }
-  function ensureGroupOverlay(){
-    qs('msGroupCallOverlay')?.classList.add('show');
-    qs('msGroupCallTitle').textContent=msGroupCall?.groupName||selectedGroup?.name||'تماس گروهی';
-    qs('msGroupCameraBtn').style.display=msGroupCall?.mode==='video'?'inline-block':'none';
-  }
-  function beginGroupCallUi(d){
-    if(!msGroupCall || msGroupCall.callId!==d.call_id){
-      msGroupCall={callId:d.call_id,groupId:d.group_id,mode:d.mode||'audio',host:d.host||d.from||currentUsername,participants:new Set(d.participants||[currentUsername]),groupName:d.group_name||selectedGroup?.name||'گروه',localReady:!!localStream};
-    }else if(Array.isArray(d.participants)){msGroupCall.participants=new Set(d.participants)}
-    ensureGroupOverlay();updateGroupStatus();
-  }
-  function prepareGroupMedia(mode){
-    const needVideo=mode==='video';
-    return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:needVideo}).then(s=>{localStream=s;return s});
-  }
-  window.startGroupCallPlaceholder=function(){if(selectedType!=='group'||!selectedGroup)return;openPopup('msGroupModePopup')};
-  window.startGroupCall=async function(mode){
-    if(selectedType!=='group'||!selectedGroup)return;closePopup('msGroupModePopup');
-    try{
-      await prepareGroupMedia(mode);const callId=newCallId();msGroupCall={callId,groupId:selectedGroup.id,mode,host:currentUsername,participants:new Set([currentUsername]),groupName:selectedGroup.name,localReady:true};ensureGroupOverlay();
-      sendWs({action:'group-call-start',group_id:selectedGroup.id,mode,call_id:callId});
-    }catch(e){alert('شروع تماس گروهی ناموفق بود. دسترسی میکروفون/دوربین را بررسی کن.');endGroupCallLocal();}
+      const sub=$('chatSub');if(sub)sub.textContent='📞 در حال تماس...';
+      stage='ساخت پیشنهاد تماس';
+      const offer=await window.peerConnection.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:mode==='video'});
+      await window.peerConnection.setLocalDescription(offer);
+      await window.waitForIceGathering(window.peerConnection,7000);
+      const desc={type:window.peerConnection.localDescription?.type,sdp:window.peerConnection.localDescription?.sdp};
+      if(!desc.type||!desc.sdp)throw new Error('SDP تماس خالی است.');
+      stage='ارسال دعوت تماس';
+      window.sendWs({action:'call-offer',to:selectedUser,offer:desc,mode,call_id:window.activeCallId});
+      window.showHangup?.();window.clearCallTimer?.();
+      if(window.callTimer)clearTimeout(window.callTimer);
+      window.callTimer=setTimeout(()=>{
+        alert('⏱️ تماس در ۳۰ ثانیه برقرار نشد.');
+        if(selectedUser)window.sendWs({action:'call-ended',to:selectedUser,call_id:window.activeCallId});
+        window.endCall?.();
+      },30000);
+    }catch(e){
+      console.error('MS__Chat call error',stage,e);
+      window.endCall?.();
+      alert(`❌ شروع تماس ناموفق بود\n\nمرحله: ${stage}\n${e?.name&&['NotAllowedError','NotFoundError','NotReadableError','OverconstrainedError','TypeError','SecurityError'].includes(e.name)?friendlyMediaError(e,mode):(e?.message||e)}`);
+    }
   };
-  window.acceptGroupCall=async function(){if(!msGroupIncoming)return;const invite=msGroupIncoming;closePopup('msGroupIncomingPopup');
-    try{
-      if(selectedType!=='group' || String(selectedGroupId)!==String(invite.groupId)){const g=groupMap.get(String(invite.groupId));if(g)selectGroup(g);}
-      await prepareGroupMedia(invite.mode);msGroupCall={callId:invite.callId,groupId:invite.groupId,mode:invite.mode,host:invite.from,participants:new Set([currentUsername]),groupName:invite.groupName,localReady:true};ensureGroupOverlay();sendWs({action:'group-call-join',call_id:invite.callId});msGroupIncoming=null;
-    }catch(e){alert('پیوستن به تماس گروهی ناموفق بود.');msGroupIncoming=null;endGroupCallLocal();}
-  };
-  window.rejectGroupCall=function(){msGroupIncoming=null;closePopup('msGroupIncomingPopup')};
-  window.toggleGroupMute=function(){groupMuted=!groupMuted;if(localStream){localStream.getAudioTracks().forEach(t=>t.enabled=!groupMuted)}qs('msGroupMuteBtn').textContent=groupMuted?'🔇 باصدا شدن':'🎙️ بی‌صدا'};
-  window.toggleGroupCamera=function(){if(!localStream||msGroupCall?.mode!=='video')return;groupCameraOff=!groupCameraOff;localStream.getVideoTracks().forEach(t=>t.enabled=!groupCameraOff);qs('msGroupCameraBtn').textContent=groupCameraOff?'📷 روشن کردن دوربین':'📹 دوربین'};
-  window.leaveGroupCall=function(){if(msGroupCall)sendWs({action:'group-call-leave',call_id:msGroupCall.callId});endGroupCallLocal();};
-  window.endGroupCallLocal=function(){for(const [peer,e] of mediaPeers){try{e.pc.close()}catch{}mediaPeers.delete(peer)}pendingByPeer.clear();if(localStream){try{localStream.getTracks().forEach(t=>t.stop())}catch{}localStream=null}msGroupCall=null;groupMuted=false;groupCameraOff=false;qs('msGroupCallOverlay')?.classList.remove('show');qs('msGroupMediaGrid').innerHTML='';};
 })();
 </script>
 
+
+<script id="msMobileV4JS">
+(()=>{
+  const chat=document.getElementById('chat');
+  const header=document.getElementById('chatHeader');
+  if(!chat||!header)return;
+  const back=document.createElement('button');
+  back.id='mobileBackButton';back.type='button';back.textContent='‹';back.title='بازگشت';back.setAttribute('aria-label','بازگشت');
+  back.onclick=()=>{if(window.matchMedia('(max-width:760px)').matches)chat.classList.remove('mobile-chat-open')};
+  header.prepend(back);
+  const mobile=()=>window.matchMedia('(max-width:760px)').matches;
+  const open=()=>{if(mobile())chat.classList.add('mobile-chat-open')};
+  const oldSelectUser=window.selectUser;
+  if(oldSelectUser)window.selectUser=function(){const r=oldSelectUser.apply(this,arguments);open();return r};
+  const oldSelectGroup=window.selectGroup;
+  if(oldSelectGroup)window.selectGroup=function(){const r=oldSelectGroup.apply(this,arguments);open();return r};
+  const oldOpenSaved=window.openSavedChat;
+  if(oldOpenSaved)window.openSavedChat=function(){const r=oldOpenSaved.apply(this,arguments);open();return r};
+  window.addEventListener('resize',()=>{if(!mobile())chat.classList.remove('mobile-chat-open')},{passive:true});
+})();
+</script>
 </body>
 </html>
